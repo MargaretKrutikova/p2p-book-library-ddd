@@ -6,12 +6,9 @@ Domains and contexts don't always have one-to-one relationship. Sometimes a doma
 
 # Features
 
-Context is some specialized knowledge that belongs together.
-Each context must have a clear responsibility with a shared language spoken inside the context.
+Context is some specialized knowledge. Each context must have a clear responsibility with a shared language spoken inside the context.
 
-Important to get the context boundaries right.
-
-Bounded contexts might encompass many workflows. A workflow might need to interact with many bounded contexts.
+Important to get the context boundaries right. Bounded contexts have many workflows.
 
 ## Contexts in the current domain space
 
