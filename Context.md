@@ -11,7 +11,7 @@ Each context must have a clear responsibility with a shared language spoken insi
 
 Important to get the context boundaries right.
 
-A workflow might need to interact with many bounded contexts.
+Bounded contexts might encompass many workflows. A workflow might need to interact with many bounded contexts.
 
 ## Contexts in the current domain space
 

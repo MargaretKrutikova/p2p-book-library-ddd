@@ -30,6 +30,7 @@ Friend management workflow
 
 - Send request to a friend
 - Accept request on the other side
+- notify friends when a new book is posted
 
 Book borrowing/lending workflow
 

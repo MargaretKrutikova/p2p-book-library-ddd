@@ -9,6 +9,7 @@ Representation of the domain relevant in the solution space.
 # Bounded context
 
 A subsystem in the solution space that is distinguished from the other subsystems with its own shared language, concepts and model.
+A context is often mapped to a subdomain.
 
 # Domain event
 
