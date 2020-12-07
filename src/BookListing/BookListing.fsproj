@@ -5,9 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Library.fs" />
-    <Compile Include="BookListing/BookListing.Domain.fs" />
-    <Compile Include="BookListing/BookListing.Implementation.fs" />
+    <Compile Include="BookListing.Domain.fs" />
+    <Compile Include="BookListing.Implementation.fs" />
+    <Compile Include="BookListing.Persistence.fs" />
+
   </ItemGroup>
 
 </Project>

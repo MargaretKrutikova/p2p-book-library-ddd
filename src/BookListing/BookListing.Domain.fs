@@ -15,6 +15,7 @@ type ListingIntent = Lend | GiveAway
 type ListingStatus = Available | Borrowed
 
 type BookListing = {
+  ListingId: ListingId
   UserId: UserId
   Author: Author
   Title: Title
