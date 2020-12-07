@@ -1,4 +1,4 @@
-﻿namespace BookListing
+﻿namespace Domain
 
 module Say =
     let hello name =
