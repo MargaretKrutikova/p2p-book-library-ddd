@@ -14,6 +14,7 @@ A context is often mapped to a subdomain.
 # Domain event
 
 A record of something that happened in the system, triggers additional activity.
+Events are fundamental for business processes.
 
 # Command
 

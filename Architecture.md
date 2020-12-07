@@ -29,8 +29,12 @@ There are multiple workflows within a context, each mapped to a single function 
 A workflow is always within a single bounded context.
 Domain events within the context should be avoided.
 
+Inputs to workflows are always domain objects inside commands.
+
 # Code inside the context
 
 - Contains all the code necessary to perform its job (db call, api etc.)
 - Onion architecture: domain inside, services around, while infrastructure, api and db are outside
 - I/O are at the edges
+
+![](CQRS.png)
