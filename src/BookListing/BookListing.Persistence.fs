@@ -1,14 +1,18 @@
 module BookListing.Persistence
-open Domain.Events
 
-let mutable listings: Domain.BookListing list = List.empty<Domain.BookListing>
+open BookListing.Domain
+open System.Collections.Generic
 
-let handleEvent (event: BookListingEvent) =
-  match event with
-  | BookBorrowed data -> 
-    listings <- listings 
-  | BookListingCreated data -> 
-    listings <- data.Listing :: listings
+let mutable listings: Dictionary<int, BookListing> = new Dictionary<int, BookListing>()
 
-module Queries =
-  let getListings () = listings
+let getListingById (ListingId id) =
+  listings.Item id
+
+let setListingById (listing: Domain.BookListing) =
+  let (ListingId id) = listing.ListingId
+  listings.Item(id) <- listing 
+
+let createListing (listing: Domain.BookListing) =
+  let (ListingId id) = listing.ListingId
+  listings.Add(id, listing)
+
