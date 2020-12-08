@@ -8,7 +8,11 @@
     <Compile Include="BookListing.Domain.fs" />
     <Compile Include="BookListing.Implementation.fs" />
     <Compile Include="BookListing.Persistence.fs" />
+    <Compile Include="BookListing.Api.fs" />
+  </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.0.0" />
   </ItemGroup>
 
 </Project>
