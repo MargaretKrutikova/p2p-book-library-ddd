@@ -2,17 +2,24 @@ module BookListing.Domain
 open System
 
 // ======================================================
-// Common types
+// Value types
 // ======================================================
+
+// TODO: enforce business rules on the type system level
 
 type UserId = UserId of int
 type ListingId = ListingId of int
 
 type Title = Title of string
+
 type Author = Author of string
 type ListingIntent = Lend | GiveAway
 
-type ListingStatus = Available | Borrowed
+type ListingStatus = Available | RequestedToBorrow | Borrowed
+
+// ======================================================
+// Entities / Aggregate roots
+// ======================================================
 
 type BookListing = {
   ListingId: ListingId
@@ -67,17 +74,10 @@ module Events =
     Listing: BookListing
   }
   type BookBorrowed = {
-    ListingId: ListingId
+    Listing: BookListing
     BorrowerId: UserId
   }
 
   type BookListingEvent =
     | BookListingCreated of BookListingCreated
     | BookBorrowed of BookBorrowed
-
-module Workflows =
-  type CreateBookListing = 
-    Commands.CreateBookListing -> Result<Events.BookListingEvent list, unit>
-  
-  type BorrowBook =
-    Commands.BorrowBook -> Result<Events.BookListingEvent list, unit>
