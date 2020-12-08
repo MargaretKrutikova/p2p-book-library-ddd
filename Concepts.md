@@ -20,3 +20,15 @@ Events are fundamental for business processes.
 
 A request for something to happen, triggered by the user or another events.
 If it succeeds - state of the system changes and more domain events might be recorded.
+
+# Value object
+
+Domain object without identity.
+
+# Entity
+
+Domain object with identity that persists when properties change.
+
+# Aggregate
+
+Collection of related objects treated as a single component. Used as an atomic unit in db transactions.
