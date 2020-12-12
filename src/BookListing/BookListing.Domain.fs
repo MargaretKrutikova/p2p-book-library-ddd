@@ -7,13 +7,23 @@ open System
 
 // TODO: enforce business rules on the type system level
 
-type UserId = UserId of int
-type ListingId = ListingId of int
+type ValidationError =
+  | TitleCantBeEmpty
+  | TitleTooLong
+  | AuthorCantBeEmpty
+  | AuthorTooLong
 
-type Title = Title of string
+type BookListingError =
+  | UserDoesntExist
+  | ValidationError of ValidationError
 
-type Author = Author of string
-type ListingIntent = Lend | GiveAway
+type UserId = private UserId of Guid
+type ListingId = private ListingId of Guid
+
+type Title = private Title of string
+type Author = private Author of string
+
+// type ListingIntent = Lend | GiveAway
 
 type ListingStatus = Available | RequestedToBorrow | Borrowed
 
@@ -26,7 +36,6 @@ type BookListing = {
   UserId: UserId
   Author: Author
   Title: Title
-  Intent: ListingIntent
   Status: ListingStatus
 }
 
@@ -34,34 +43,27 @@ type BookListing = {
 // Create book listing
 // ======================================================
 
-type CreateBookListingForm = {
-  UserId: UserId
-  Title: Title
-  Authour: Author
-  Intent: ListingIntent
-}
-
 module InputTypes = 
-  type UnvalidatedCreateBookListingForm = {
-    UserId: int
+  type CreateBookListingDto = {
+    NewListingId: Guid
+    UserId: Guid
     Title: string
     Author: string
-    Intent: ListingIntent
   }
 
-  type UnvalidatedBorrowBookForm = {
-    ListingId: int
-    BorrowerId: int
+  type BorrowBookFormDto = {
+    ListingId: Guid
+    BorrowerId: Guid
   }
  
 module Commands =
   type CreateBookListing = {
-    BookListingForm: InputTypes.UnvalidatedCreateBookListingForm
+    BookListing: InputTypes.CreateBookListingDto
     Timestamp: DateTime
   }
 
   type BorrowBook = {
-    BorrowBookForm: InputTypes.UnvalidatedBorrowBookForm
+    BorrowBookForm: InputTypes.BorrowBookFormDto
     Timestamp: DateTime
   }
 
@@ -69,15 +71,32 @@ module Commands =
     | CreateBookListing of CreateBookListing
     | BorrowBook of BorrowBook
 
-module Events =
-  type BookListingCreated = {
-    Listing: BookListing
-  }
-  type BookBorrowed = {
-    Listing: BookListing
-    BorrowerId: UserId
-  }
+// ===============================
+// Smart constructors
+// ===============================
 
-  type BookListingEvent =
-    | BookListingCreated of BookListingCreated
-    | BookBorrowed of BookBorrowed
+module Title =
+  let value ((Title title)) = title
+  let create value: Result<Title, ValidationError> =
+    if String.IsNullOrWhiteSpace value then
+      Error TitleCantBeEmpty
+    elif value.Length > 200 then
+      Error TitleTooLong
+    else Title value |> Ok
+
+module Author =
+  let value ((Author author)) = author
+  let create value: Result<Author, ValidationError> =
+    if String.IsNullOrWhiteSpace value then
+      Error TitleCantBeEmpty
+    elif value.Length > 100 then
+      Error TitleTooLong
+    else Author value |> Ok
+
+module ListingId =
+  let value ((ListingId id)) = id
+  let create guid = ListingId guid
+
+module UserId =
+  let value ((UserId id)) = id
+  let create guid = UserId guid
