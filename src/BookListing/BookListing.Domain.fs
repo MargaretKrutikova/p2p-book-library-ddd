@@ -15,6 +15,7 @@ type ValidationError =
 
 type BookListingError =
   | UserDoesntExist
+  | ListingDoesntExist
   | ValidationError of ValidationError
 
 type UserId = private UserId of Guid

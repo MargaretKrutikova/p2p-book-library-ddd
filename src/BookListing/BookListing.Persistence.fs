@@ -17,11 +17,21 @@ module Queries =
     PublishedDate: DateTime
   }
 
+  let fromGetListingModel (model: Listing): BookListing =
+    {
+      ListingId = model.ListingId
+      UserId = model.UserId
+      Author = model.Author
+      Title = model.Title
+      Status = model.Status
+    }
+  
   type User = {
     Id: UserId
     Name: string
   }
 
+  type GetListingById = ListingId -> Task<Result<Listing, DbReadError>>
   type GetUserListings = UserId -> Task<Listing seq>
   type GetUserById = UserId -> Task<Result<User, DbReadError>>
 
