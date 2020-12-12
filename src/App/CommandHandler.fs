@@ -3,10 +3,10 @@ module CommandHandler
 open BookListing
 open InMemoryPersistence
 
-let handleCreateBookListing (persistence: InMemoryPersistence) command =
+let private handleCreateBookListing (persistence: InMemoryPersistence) command =
   Implementation.createBookListing persistence.GetUserById persistence.CreateListing command
 
-let handleBorrowBook (persistence: InMemoryPersistence) command =
+let private handleBorrowBook (persistence: InMemoryPersistence) command =
   Implementation.borrowBook persistence.GetListingById command
 
 let commandHandler (persistence: InMemoryPersistence) (command: Domain.Commands.BookListingCommand) =

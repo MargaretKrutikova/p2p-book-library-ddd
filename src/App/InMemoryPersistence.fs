@@ -3,6 +3,7 @@ module InMemoryPersistence
 open System
 open BookListing
 open System.Threading.Tasks
+open FsToolkit.ErrorHandling
 
 type InMemoryPersistence () =
   let mutable users: Persistence.Queries.User list = List.empty
@@ -18,16 +19,16 @@ type InMemoryPersistence () =
     fun userId ->
       users 
       |> Seq.filter (fun user -> user.Id = userId)
-      |> Seq.head
-      |> Ok
+      |> Seq.tryHead
+      |> Result.requireSome (Persistence.Queries.DbReadError.MissingRecord)
       |> Task.FromResult
 
   member __.GetListingById: Persistence.Queries.GetListingById =
     fun listingId ->
       listings 
       |> Seq.filter (fun listing -> listing.ListingId = listingId)
-      |> Seq.head
-      |> Ok
+      |> Seq.tryHead
+      |> Result.requireSome (Persistence.Queries.DbReadError.MissingRecord)
       |> Task.FromResult
 
   member __.CreateListing: Persistence.Commands.CreateListing =
