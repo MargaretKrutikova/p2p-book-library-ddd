@@ -1,29 +1,48 @@
 module BookListing.Implementation
 
 open BookListing.Domain
+open FsToolkit.ErrorHandling.TaskResultCE
+open FsToolkit.ErrorHandling
 
 module CreateBookListingWorkflow =
-  type CreateBookListing = 
-    Commands.CreateBookListing -> Result<Events.BookListingEvent list, unit>
+  let toDomainError (domainError: BookListingError) (error: Persistence.Queries.DbReadError): BookListingError =
+    match error with
+    | Persistence.Queries.MissingRecord -> domainError
 
-  let createBookListing: CreateBookListing =
-    fun command ->
-      let form = command.BookListingForm
-      // TODO: validation
-      let bookListingCreated: BookListing = {
-        ListingId = ListingId 42 // TODO: haha
-        UserId = UserId form.UserId
-        Author = Author form.Author
-        Title = Title form.Title
-        Intent = form.Intent
-        Status = Available
-      }
-      let bookListingCreatedEvent: Events.BookListingCreated = {
-        Listing = bookListingCreated
+  let createBookListing: Public.CreateBookListing =
+    fun getUserById createListing command ->
+      taskResult {
+        let! user = 
+          UserId.create command.BookListing.UserId 
+            |> getUserById
+            |> TaskResult.mapError (toDomainError UserDoesntExist)
+
+        let form = command.BookListing
+
+        let! title = 
+          Title.create form.Title |> Result.mapError ValidationError
+        let! author = 
+          Author.create form.Author |> Result.mapError ValidationError
+
+        let listingId = ListingId.create form.NewListingId
+        let createListingModel: Persistence.Commands.CreateListingModel = {
+          ListingId = listingId
+          UserId = user.Id
+          Author = author
+          Title = title
+          InitialStatus = Available
+        }
+
+        do! createListing createListingModel
+
+        let bookListing = Persistence.Commands.fromCreateListingModel createListingModel
+        let bookListingCreatedEvent: Events.BookListingCreated = {
+          Listing = bookListing
+        }
+        
+        return! Ok([Events.BookListingCreated bookListingCreatedEvent])
       }
       
-      Ok([Events.BookListingCreated bookListingCreatedEvent])
-
 module BorrowBookWorkflow =
   type BorrowBook = 
     (ListingId -> BookListing) -> Commands.BorrowBook -> Result<Events.BookListingEvent list, unit>
@@ -32,7 +51,7 @@ module BorrowBookWorkflow =
     fun fetchListing command ->
       let form = command.BorrowBookForm
       // TODO: validation
-      let existingListing = fetchListing (ListingId form.ListingId)
+      let existingListing = ListingId.create form.ListingId |> fetchListing
       
       match existingListing.Status with
       | Available ->

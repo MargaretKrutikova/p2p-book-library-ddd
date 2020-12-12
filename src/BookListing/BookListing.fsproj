@@ -6,13 +6,17 @@
 
   <ItemGroup>
     <Compile Include="BookListing.Domain.fs" />
-    <Compile Include="BookListing.Implementation.fs" />
+    <Compile Include="BookListing.Events.fs" />
+
     <Compile Include="BookListing.Persistence.fs" />
-    <Compile Include="BookListing.Api.fs" />
+    <Compile Include="BookListing.Public.fs" />
+    
+    <Compile Include="BookListing.Implementation.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FsToolkit.ErrorHandling" Version="2.0.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.0.0" />
   </ItemGroup>
 
 </Project>
