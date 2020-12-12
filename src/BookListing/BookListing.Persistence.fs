@@ -1,18 +1,53 @@
 module BookListing.Persistence
 
 open BookListing.Domain
-open System.Collections.Generic
+open System
+open System.Threading.Tasks
 
-let mutable listings: Dictionary<int, BookListing> = new Dictionary<int, BookListing>()
+module Queries =
+  type DbReadError =
+    | MissingRecord
 
-let getListingById (ListingId id) =
-  listings.Item id
+  type Listing = {
+    ListingId: ListingId
+    UserId: UserId
+    Author: Author
+    Title: Title
+    Status: ListingStatus
+    PublishedDate: DateTime
+  }
 
-let setListingById (listing: Domain.BookListing) =
-  let (ListingId id) = listing.ListingId
-  listings.Item(id) <- listing 
+  type User = {
+    Id: UserId
+    Name: string
+  }
 
-let createListing (listing: Domain.BookListing) =
-  let (ListingId id) = listing.ListingId
-  listings.Add(id, listing)
+  type GetUserListings = UserId -> Task<Listing seq>
+  type GetUserById = UserId -> Task<Result<User, DbReadError>>
 
+module Commands =
+  type CreateListingModel = {
+    ListingId: ListingId
+    UserId: UserId
+    Author: Author
+    Title: Title
+    InitialStatus: ListingStatus
+  }
+
+  let fromCreateListingModel (model: CreateListingModel): BookListing =
+    {
+      ListingId = model.ListingId
+      UserId = model.UserId
+      Author = model.Author
+      Title = model.Title
+      Status = model.InitialStatus
+    }
+
+  type CreateUserModel = {
+    UserId: UserId
+    Name: string
+  }
+
+  // TODO: error handling
+  type CreateUserCommand = CreateUserModel -> Task<unit>
+  type CreateListing = CreateListingModel -> Task<unit>
