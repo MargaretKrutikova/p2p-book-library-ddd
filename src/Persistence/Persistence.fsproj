@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Database.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper.FSharp" Version="1.15.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="2.0.0" />
+  </ItemGroup>
+
+</Project>
