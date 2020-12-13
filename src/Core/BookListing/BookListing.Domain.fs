@@ -1,4 +1,4 @@
-module BookListing.Domain
+module Core.BookListing.Domain
 open System
 
 // ======================================================

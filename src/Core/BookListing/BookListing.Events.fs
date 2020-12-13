@@ -1,4 +1,4 @@
-module BookListing.Events
+module Core.BookListing.Events
 
 type BookListingCreated = {
     Listing: Domain.BookListing

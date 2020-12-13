@@ -1,4 +1,5 @@
-module BookListing.Public
+module Core.BookListing.Public
+
 open System.Threading.Tasks
 
 type CreateBookListing = 

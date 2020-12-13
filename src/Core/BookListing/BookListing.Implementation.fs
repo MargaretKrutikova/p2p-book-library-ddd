@@ -1,6 +1,6 @@
-module BookListing.Implementation
+module Core.BookListing.Implementation
 
-open BookListing.Domain
+open Core.BookListing.Domain
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 

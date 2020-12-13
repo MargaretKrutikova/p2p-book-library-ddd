@@ -5,13 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="BookListing.Domain.fs" />
-    <Compile Include="BookListing.Events.fs" />
+    <Compile Include="BookListing/BookListing.Domain.fs" />
+    <Compile Include="BookListing/BookListing.Events.fs" />
 
-    <Compile Include="BookListing.Persistence.fs" />
-    <Compile Include="BookListing.Public.fs" />
+    <Compile Include="BookListing/BookListing.Persistence.fs" />
+    <Compile Include="BookListing/BookListing.Public.fs" />
     
-    <Compile Include="BookListing.Implementation.fs" />
+    <Compile Include="BookListing/BookListing.Implementation.fs" />
   </ItemGroup>
 
   <ItemGroup>

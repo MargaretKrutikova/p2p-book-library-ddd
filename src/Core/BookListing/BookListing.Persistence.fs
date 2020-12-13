@@ -1,6 +1,6 @@
-module BookListing.Persistence
+module Core.BookListing.Persistence
 
-open BookListing.Domain
+open Core.BookListing.Domain
 open System
 open System.Threading.Tasks
 
