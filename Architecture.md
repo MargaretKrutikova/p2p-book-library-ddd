@@ -38,3 +38,7 @@ Inputs to workflows are always domain objects inside commands.
 - I/O are at the edges
 
 ![](CQRS.png)
+
+# Pipeline for each workflow
+
+Own composition root for each pipeline with one pipeline per each use-case/workflow.
