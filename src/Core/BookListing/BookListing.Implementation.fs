@@ -1,6 +1,8 @@
 module Core.BookListing.Implementation
 
 open Core.BookListing.Domain
+open Core.Common.SimpleTypes
+
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 

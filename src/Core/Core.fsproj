@@ -5,12 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Common/SimpleTypes.fs" />
+
     <Compile Include="BookListing/BookListing.Domain.fs" />
     <Compile Include="BookListing/BookListing.Events.fs" />
-
     <Compile Include="BookListing/BookListing.Persistence.fs" />
     <Compile Include="BookListing/BookListing.Public.fs" />
-    
     <Compile Include="BookListing/BookListing.Implementation.fs" />
   </ItemGroup>
 

@@ -1,13 +1,9 @@
 module Core.BookListing.Domain
+
+open Core.Common.SimpleTypes
 open System
 
-// ======================================================
-// Value types
-// ======================================================
-
-// TODO: enforce business rules on the type system level
-
-type ValidationError =
+type BookListingValidationError =
   | TitleCantBeEmpty
   | TitleTooLong
   | AuthorCantBeEmpty
@@ -16,15 +12,10 @@ type ValidationError =
 type BookListingError =
   | UserDoesntExist
   | ListingDoesntExist
-  | ValidationError of ValidationError
-
-type UserId = private UserId of Guid
-type ListingId = private ListingId of Guid
+  | ValidationError of BookListingValidationError
 
 type Title = private Title of string
 type Author = private Author of string
-
-// type ListingIntent = Lend | GiveAway
 
 type ListingStatus = Available | RequestedToBorrow | Borrowed
 
@@ -72,13 +63,14 @@ module Commands =
     | CreateBookListing of CreateBookListing
     | BorrowBook of BorrowBook
 
+
 // ===============================
 // Smart constructors
 // ===============================
 
 module Title =
   let value ((Title title)) = title
-  let create value: Result<Title, ValidationError> =
+  let create value: Result<Title, BookListingValidationError> =
     if String.IsNullOrWhiteSpace value then
       Error TitleCantBeEmpty
     elif value.Length > 200 then
@@ -87,17 +79,9 @@ module Title =
 
 module Author =
   let value ((Author author)) = author
-  let create value: Result<Author, ValidationError> =
+  let create value: Result<Author, BookListingValidationError> =
     if String.IsNullOrWhiteSpace value then
       Error TitleCantBeEmpty
     elif value.Length > 100 then
       Error TitleTooLong
     else Author value |> Ok
-
-module ListingId =
-  let value ((ListingId id)) = id
-  let create guid = ListingId guid
-
-module UserId =
-  let value ((UserId id)) = id
-  let create guid = UserId guid

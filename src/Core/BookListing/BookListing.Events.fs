@@ -1,12 +1,15 @@
 module Core.BookListing.Events
 
+open Core.Common.SimpleTypes
+open Domain
+
 type BookListingCreated = {
-    Listing: Domain.BookListing
+    Listing: BookListing
   }
   
 type BookBorrowed = {
-  Listing: Domain.BookListing
-  BorrowerId: Domain.UserId
+  Listing: BookListing
+  BorrowerId: UserId
 }
 
 type BookListingEvent =

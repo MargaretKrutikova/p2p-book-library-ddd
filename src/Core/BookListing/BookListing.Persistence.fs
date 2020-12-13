@@ -1,6 +1,8 @@
 module Core.BookListing.Persistence
 
 open Core.BookListing.Domain
+open Core.Common.SimpleTypes
+
 open System
 open System.Threading.Tasks
 
