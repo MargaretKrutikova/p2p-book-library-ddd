@@ -1,7 +1,7 @@
 module InMemoryPersistence
 
 open System
-open BookListing
+open Core.BookListing
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 
@@ -42,4 +42,12 @@ type InMemoryPersistence () =
         PublishedDate = DateTime.UtcNow
       }
       listings <- listing::listings
+      Task.FromResult ()
+
+  member __.CreateUser (id: Guid) (name: string) =
+      let user: Persistence.Queries.User = {
+        Id = Domain.UserId.create id
+        Name = name
+      }
+      users <- user::users
       Task.FromResult ()

@@ -1,6 +1,6 @@
-﻿open System
+open System
 open Npgsql
-open BookListing
+open Core.BookListing
 open InMemoryPersistence
 
 let createUser (dbConnection) =

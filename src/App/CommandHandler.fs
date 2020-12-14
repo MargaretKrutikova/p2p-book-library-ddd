@@ -1,6 +1,6 @@
 module CommandHandler
 
-open BookListing
+open Core.BookListing
 open InMemoryPersistence
 
 let private handleCreateBookListing (persistence: InMemoryPersistence) command =

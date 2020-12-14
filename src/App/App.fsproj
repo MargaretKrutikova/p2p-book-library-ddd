@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Persistence\Persistence.fsproj" />
-    <ProjectReference Include="..\BookListing\BookListing.fsproj" />
+    <ProjectReference Include="..\Core\Core.fsproj" />
   </ItemGroup>
 
 </Project>
