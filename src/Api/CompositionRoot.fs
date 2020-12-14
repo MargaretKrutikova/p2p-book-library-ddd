@@ -1,24 +1,21 @@
 module Api.CompositionRoot
 
-open Core.BookListing
+open Core.BookListing.Service
 
 open InMemoryPersistence
 
 type CompositionRoot = {
-  CreateListing: Service.CreateBookListing
-  RequestToBorrowBook: Service.RequestToBorrowBook
-  CreateUser: Service.CreateUser
-  GetUserListings: Service.GetUserListings
+  CreateListing: CreateBookListing.Composed
+  RequestToBorrowBook: RequestToBorrowBook.Composed
+  CreateUser: CreateUser.Composed
+  GetUserListings: GetUserListings.Composed
 }
 
 let compose (persistence: Persistence): CompositionRoot = 
   {
-    CreateListing = 
-      Service.createBookListing persistence.GetUserById persistence.CreateListing
-    CreateUser =
-      Service.createUser persistence.CreateUser
-    GetUserListings = 
-      Service.getUserListings persistence.GetUserById persistence.GetUserListings
-    RequestToBorrowBook = 
-      Service.requestToBorrowBook persistence.GetUserById persistence.GetListingById persistence.UpdateListing
+    CreateListing = CreateBookListing.execute persistence.GetUserById persistence.CreateListing
+    CreateUser = CreateUser.execute persistence.CreateUser
+    GetUserListings = GetUserListings.run persistence.GetUserById persistence.GetUserListings
+    RequestToBorrowBook =
+      RequestToBorrowBook.execute persistence.GetUserById persistence.GetListingById persistence.UpdateListing
   }

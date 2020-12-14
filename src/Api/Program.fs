@@ -8,7 +8,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
-open Api.HttpHandlers
 open InMemoryPersistence
 
 // ---------------------------------
@@ -20,13 +19,13 @@ let webApp =
         subRoute "/api"
             (choose [
                 GET >=> choose [
-                    routef "/listings/%s" handleGetListings
+                    routef "/listings/%s" BookListing.HttpHandlers.handleGetListings
                 ]
                 POST >=> choose [
-                    route "/users" >=> handleCreateUser
+                    route "/users" >=> BookListing.HttpHandlers.handleCreateUser
                 ]
                 POST >=> choose [
-                    routef "/users/%s/listings" handleCreateListing
+                    routef "/users/%s/listings" BookListing.HttpHandlers.handleCreateListing
                 ]
             ])
         setStatusCode 404 >=> text "Not Found" ]
