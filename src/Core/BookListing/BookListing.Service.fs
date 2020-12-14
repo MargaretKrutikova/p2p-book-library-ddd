@@ -16,6 +16,7 @@ type BookListingError =
 
 type CreateBookListing = Domain.CreateBookListingDto -> Task<Result<unit, BookListingError>>
 type RequestToBorrowBook = ListingId -> UserId -> Task<Result<unit, BookListingError>>
+type CreateUser = CreateUserDto -> Task<Result<unit, BookListingError>>
 
 module private Converstions = 
   let toDomainError (domainError: BookListingError) (error: Queries.DbReadError): BookListingError =
@@ -79,3 +80,13 @@ let requestToBorrowBook
 
         do! updateListing updateModel |> TaskResult.mapError (fun _ -> ServiceError)
       }
+
+let createUser (createUser: Commands.CreateUser): CreateUser =
+  fun dto -> 
+    taskResult {
+      let userModel: Commands.UserCreateModel = {
+        UserId = dto.UserId
+        Name = dto.Name
+      }
+      do! createUser userModel |> TaskResult.mapError (fun _ -> ServiceError)
+    }

@@ -51,6 +51,6 @@ module Commands =
     Status: ListingStatus
   }
 
-  type CreateUserCommand = UserCreateModel -> Task<Result<unit, DbWriteError>>
+  type CreateUser = UserCreateModel -> Task<Result<unit, DbWriteError>>
   type CreateListing = ListingCreateModel -> Task<Result<unit, DbWriteError>>
   type UpdateListing = ListingUpdateModel -> Task<Result<unit, DbWriteError>>
