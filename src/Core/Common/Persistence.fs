@@ -24,7 +24,7 @@ module Queries =
   }
 
   type GetListingById = ListingId -> Task<Result<ListingReadModel, DbReadError>>
-  type GetUserListings = UserId -> Task<ListingReadModel seq>
+  type GetUserListings = UserId -> Task<Result<ListingReadModel seq, DbReadError>>
   type GetUserById = UserId -> Task<Result<UserReadModel, DbReadError>>
 
 module Commands =

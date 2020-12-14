@@ -63,10 +63,14 @@ let configureApp (app : IApplicationBuilder) =
         .UseCors(configureCors)
         .UseGiraffe(webApp)
 
+let compose (): CompositionRoot.CompositionRoot =
+    let persistence = InMemoryPersistence.create ()
+    CompositionRoot.compose persistence
+
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
-    services.AddSingleton<Persistence>(InMemoryPersistence.create ()) |> ignore
+    services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()
