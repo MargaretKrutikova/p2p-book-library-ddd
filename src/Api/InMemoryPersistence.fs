@@ -1,26 +1,25 @@
 module Api.InMemoryPersistence
 
 open System
-open Core.BookListing
+open Core.Common.Persistence
 open Core.Common.SimpleTypes
 
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 
 type Persistence = {
-  GetUserListings: Persistence.Queries.GetUserListings
-  GetUserById: Persistence.Queries.GetUserById
-  GetListingById: Persistence.Queries.GetListingById
-  CreateListing: Persistence.Commands.CreateListing
-  CreateUser: Guid -> string -> Task<unit>
+  GetUserListings: Queries.GetUserListings
+  GetUserById: Queries.GetUserById
+  GetListingById: Queries.GetListingById
+  CreateListing: Commands.CreateListing
+  UpdateListing: Commands.UpdateListing
+  CreateUser: Commands.CreateUser
 }
 
 module InMemoryPersistence =
-  open Persistence
-
   let create (): Persistence =
-    let mutable users: Queries.User list = List.empty
-    let mutable listings: Queries.Listing list = List.empty
+    let mutable users: Queries.UserReadModel list = List.empty
+    let mutable listings: Queries.ListingReadModel list = List.empty
 
     let getUserListings: Queries.GetUserListings =
       fun userId ->
@@ -46,7 +45,7 @@ module InMemoryPersistence =
 
     let createListing: Commands.CreateListing =
       fun model ->
-        let listing: Queries.Listing = {
+        let listing: Queries.ListingReadModel = {
           ListingId = model.ListingId 
           UserId = model.UserId
           Author = model.Author
@@ -55,15 +54,29 @@ module InMemoryPersistence =
           PublishedDate = DateTime.UtcNow
         }
         listings <- listing::listings
-        Task.FromResult ()
+        Task.FromResult (Ok ())
 
-    let createUser (id: Guid) (name: string) =
-        let user: Queries.User = {
-          Id = UserId.create id
-          Name = name
-        }
-        users <- user::users
-        Task.FromResult ()
+    let createUser: Commands.CreateUser =
+        fun userDto ->
+          let user: Queries.UserReadModel = {
+            Id = userDto.UserId
+            Name = userDto.Name
+          }
+          users <- user::users
+          Task.FromResult (Ok())
+
+    let updateListing (listing: Commands.ListingUpdateModel) =
+      let updatedListings = 
+        listings 
+          |> Seq.map (fun l -> 
+            if l.ListingId = listing.ListingId then
+              { l with Status = listing.Status }
+            else l
+          ) 
+          |> Seq.toList
+
+      listings <- updatedListings
+      Task.FromResult (Ok ())
 
     {
       GetUserListings = getUserListings
@@ -71,4 +84,5 @@ module InMemoryPersistence =
       GetListingById = getListingById
       CreateListing = createListing
       CreateUser = createUser
+      UpdateListing = updateListing
     }
