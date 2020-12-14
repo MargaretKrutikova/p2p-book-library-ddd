@@ -18,6 +18,8 @@ type CreateBookListing = Domain.CreateBookListingDto -> Task<Result<unit, BookLi
 type RequestToBorrowBook = ListingId -> UserId -> Task<Result<unit, BookListingError>>
 type CreateUser = CreateUserDto -> Task<Result<unit, BookListingError>>
 
+type GetUserListings = UserId -> Task<Result<Queries.ListingReadModel list, BookListingError>>
+
 module private Converstions = 
   let toDomainError (domainError: BookListingError) (error: Queries.DbReadError): BookListingError =
     match error with
@@ -89,4 +91,19 @@ let createUser (createUser: Commands.CreateUser): CreateUser =
         Name = dto.Name
       }
       do! createUser userModel |> TaskResult.mapError (fun _ -> ServiceError)
+    }
+
+let getUserListings 
+  (getUserById: Queries.GetUserById)
+  (getListings: Queries.GetUserListings): GetUserListings =
+  fun userId -> 
+    taskResult {
+      do! userId
+          |> getUserById
+          |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
+          |> TaskResult.ignore
+
+      return! getListings userId 
+              |> TaskResult.map (Seq.toList) 
+              |> TaskResult.mapError (fun _ -> ServiceError)
     }
