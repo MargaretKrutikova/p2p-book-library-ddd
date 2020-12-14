@@ -9,6 +9,8 @@ module Queries =
   type DbReadError =
     | MissingRecord
 
+  type DbResult<'a> = Task<Result<'a, DbReadError>>
+
   type ListingReadModel = {
     ListingId: ListingId
     UserId: UserId
@@ -23,13 +25,15 @@ module Queries =
     Name: string
   }
 
-  type GetListingById = ListingId -> Task<Result<ListingReadModel, DbReadError>>
-  type GetUserListings = UserId -> Task<Result<ListingReadModel seq, DbReadError>>
-  type GetUserById = UserId -> Task<Result<UserReadModel, DbReadError>>
+  type GetListingById = ListingId -> DbResult<ListingReadModel>
+  type GetUserListings = UserId -> DbResult<ListingReadModel seq>
+  type GetUserById = UserId -> DbResult<UserReadModel>
 
 module Commands =
   type DbWriteError =
     | WriteError
+
+  type DbWriteResult = Task<Result<unit, DbWriteError>>
 
   type ListingCreateModel = {
     ListingId: ListingId
@@ -51,6 +55,6 @@ module Commands =
     Status: ListingStatus
   }
 
-  type CreateUser = UserCreateModel -> Task<Result<unit, DbWriteError>>
-  type CreateListing = ListingCreateModel -> Task<Result<unit, DbWriteError>>
-  type UpdateListing = ListingUpdateModel -> Task<Result<unit, DbWriteError>>
+  type CreateUser = UserCreateModel -> DbWriteResult
+  type CreateListing = ListingCreateModel -> DbWriteResult
+  type UpdateListing = ListingUpdateModel -> DbWriteResult
