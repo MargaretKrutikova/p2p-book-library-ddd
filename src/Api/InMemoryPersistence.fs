@@ -25,7 +25,8 @@ module InMemoryPersistence =
       fun userId ->
         listings 
         |> Seq.filter (fun listing -> listing.UserId = userId)
-        |> Task.FromResult
+        |> Ok
+        |> Task.FromResult 
 
     let getUserById: Queries.GetUserById =
       fun userId ->

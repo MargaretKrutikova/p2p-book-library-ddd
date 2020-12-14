@@ -11,6 +11,11 @@
   <ItemGroup>
     <PackageReference Include="Dapper.FSharp" Version="1.15.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="2.0.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.0.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.fsproj" />
   </ItemGroup>
 
 </Project>
