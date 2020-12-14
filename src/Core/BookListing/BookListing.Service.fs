@@ -17,7 +17,7 @@ type BookListingError =
 type BookListingReadResult<'a> = Task<Result<'a, BookListingError>>
 type BookListingCommandResult = Task<Result<unit, BookListingError>>
 
-module private Converstions = 
+module private Conversions = 
   let toDomainError (domainError: BookListingError) (error: Queries.DbReadError): BookListingError =
     match error with
     | Queries.MissingRecord -> domainError
@@ -33,7 +33,7 @@ module private Converstions =
 
 let private checkUserExists (getUserById: Queries.GetUserById) userId: Task<Result<unit, BookListingError>> =
   getUserById userId 
-  |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
+  |> TaskResult.mapError (Conversions.toDomainError UserDoesntExist)
   |> TaskResult.ignore
 
 module CreateBookListing =
@@ -49,7 +49,7 @@ module CreateBookListing =
           Implementation.createBookListing bookListingDto 
           |> Result.mapError DomainError
         
-        do! Converstions.toCreateListingModel bookListing 
+        do! Conversions.toCreateListingModel bookListing 
               |> createListing 
               |> TaskResult.mapError (fun _ -> ServiceError)
       }
@@ -67,7 +67,7 @@ module RequestToBorrowBook =
         let! existingListing =
             listingId
             |> getListingById
-            |> TaskResult.mapError (Converstions.toDomainError ListingDoesntExist)
+            |> TaskResult.mapError (Conversions.toDomainError ListingDoesntExist)
         
         let! updatedStatus = 
             Implementation.requestToBorrow existingListing.Status
