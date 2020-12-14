@@ -14,11 +14,8 @@ type BookListingError =
   | ServiceError
   | DomainError of BookListingDomainError
 
-type CreateBookListing = Domain.CreateBookListingDto -> Task<Result<unit, BookListingError>>
-type RequestToBorrowBook = ListingId -> UserId -> Task<Result<unit, BookListingError>>
-type CreateUser = CreateUserDto -> Task<Result<unit, BookListingError>>
-
-type GetUserListings = UserId -> Task<Result<Queries.ListingReadModel list, BookListingError>>
+type BookListingReadResult<'a> = Task<Result<'a, BookListingError>>
+type BookListingCommandResult = Task<Result<unit, BookListingError>>
 
 module private Converstions = 
   let toDomainError (domainError: BookListingError) (error: Queries.DbReadError): BookListingError =
@@ -34,40 +31,43 @@ module private Converstions =
       InitialStatus = listing.Status
     }
 
-let createBookListing 
-  (getUserById: Queries.GetUserById)
-  (createListing: Commands.CreateListing): CreateBookListing =
-  fun bookListingDto ->
-    taskResult {
-      do! bookListingDto.UserId 
-            |> getUserById
-            |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
-            |> TaskResult.ignore
+let private checkUserExists (getUserById: Queries.GetUserById) userId: Task<Result<unit, BookListingError>> =
+  getUserById userId 
+  |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
+  |> TaskResult.ignore
 
-      let! bookListing = 
-        Implementation.createBookListing bookListingDto 
-        |> Result.mapError DomainError
-      
-      do! Converstions.toCreateListingModel bookListing 
-            |> createListing 
-            |> TaskResult.mapError (fun _ -> ServiceError)
-    }
-      
-let requestToBorrowBook
-  (getUserById: Queries.GetUserById)
-  (getListingById: Queries.GetListingById)
-  (updateListing: Commands.UpdateListing): RequestToBorrowBook =
-    fun listingId borrowerId ->
+module CreateBookListing =
+  type Composed = Domain.CreateBookListingDto -> BookListingCommandResult
+  type Service = Queries.GetUserById -> Commands.CreateListing -> Composed
+
+  let execute: Service =
+    fun getUserById createListing bookListingDto ->
       taskResult {
+        do! checkUserExists getUserById bookListingDto.UserId
+
+        let! bookListing = 
+          Implementation.createBookListing bookListingDto 
+          |> Result.mapError DomainError
+        
+        do! Converstions.toCreateListingModel bookListing 
+              |> createListing 
+              |> TaskResult.mapError (fun _ -> ServiceError)
+      }
+
+module RequestToBorrowBook =
+  type Composed = ListingId -> UserId -> BookListingCommandResult
+  type Service = 
+    Queries.GetUserById -> Queries.GetListingById -> Commands.UpdateListing -> Composed
+
+  let execute: Service =
+    fun getUserById getListingById updateListing listingId borrowerId ->
+      taskResult {
+        do! checkUserExists getUserById borrowerId
+
         let! existingListing =
             listingId
             |> getListingById
             |> TaskResult.mapError (Converstions.toDomainError ListingDoesntExist)
-        
-        do! borrowerId
-              |> getUserById
-              |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
-              |> TaskResult.ignore
         
         let! updatedStatus = 
             Implementation.requestToBorrow existingListing.Status
@@ -83,27 +83,30 @@ let requestToBorrowBook
         do! updateListing updateModel |> TaskResult.mapError (fun _ -> ServiceError)
       }
 
-let createUser (createUser: Commands.CreateUser): CreateUser =
-  fun dto -> 
-    taskResult {
-      let userModel: Commands.UserCreateModel = {
-        UserId = dto.UserId
-        Name = dto.Name
+module CreateUser =
+  type Composed = CreateUserDto -> BookListingCommandResult
+  type Service =  Commands.CreateUser -> Composed
+
+  let execute: Service =
+    fun createUser dto -> 
+      taskResult {
+        let userModel: Commands.UserCreateModel = {
+          UserId = dto.UserId
+          Name = dto.Name
+        }
+        do! createUser userModel |> TaskResult.mapError (fun _ -> ServiceError)
       }
-      do! createUser userModel |> TaskResult.mapError (fun _ -> ServiceError)
-    }
 
-let getUserListings 
-  (getUserById: Queries.GetUserById)
-  (getListings: Queries.GetUserListings): GetUserListings =
-  fun userId -> 
-    taskResult {
-      do! userId
-          |> getUserById
-          |> TaskResult.mapError (Converstions.toDomainError UserDoesntExist)
-          |> TaskResult.ignore
+module GetUserListings =
+  type Composed = UserId -> BookListingReadResult<Queries.ListingReadModel list>
+  type Service = Queries.GetUserById -> Queries.GetUserListings -> Composed
 
-      return! getListings userId 
-              |> TaskResult.map (Seq.toList) 
-              |> TaskResult.mapError (fun _ -> ServiceError)
-    }
+  let run: Service =
+    fun getUserById getListings userId -> 
+      taskResult {
+        do! checkUserExists getUserById userId
+
+        return! getListings userId 
+                |> TaskResult.map (Seq.toList) 
+                |> TaskResult.mapError (fun _ -> ServiceError)
+      }

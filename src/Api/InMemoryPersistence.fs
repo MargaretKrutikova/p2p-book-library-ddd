@@ -2,7 +2,6 @@ module Api.InMemoryPersistence
 
 open System
 open Core.Common.Persistence
-open Core.Common.SimpleTypes
 
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
