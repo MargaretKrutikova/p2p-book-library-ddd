@@ -30,3 +30,14 @@ type ListingOutputModel = {
     Author: string
     Title: string
 }
+
+type IUserApi = {
+    create: UserCreateInputModel -> Async<UserCreatedOutputModel>
+    getById: string -> Async<UserCreatedOutputModel> 
+}
+with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
+
+type IBookListingApi = {
+    create: ListingCreateInputModel -> Async<ListingCreatedOutputModel>
+}
+with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName
