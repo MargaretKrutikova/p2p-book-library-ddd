@@ -37,8 +37,10 @@ type ApiError =
     | ListingNotFound
     | InternalError
 
+type ApiResponse<'a> = Result<'a, ApiError>
+
 type IUserApi = {
-    create: UserCreateInputModel -> Async<Result<UserCreatedOutputModel, ApiError>>
+    create: UserCreateInputModel -> Async<ApiResponse<UserCreatedOutputModel>>
     getById: string -> Async<UserCreatedOutputModel>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName

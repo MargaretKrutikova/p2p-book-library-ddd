@@ -1,76 +1,91 @@
 module App
 
-type Model =
-    {
-        downloaded: Result<string, string>
-    }
-    with
-        static member createDefault () = { downloaded = Ok "Nothing was downloaded yet" }
+open Api.BookListing.Models
+
+type CreateUserApiState =
+    | NotAsked
+    | Loading
+    | Error of ApiError
+    | CreatedUser
+
+type Model = {
+    UserName: string
+    CreateUserApiState: CreateUserApiState
+}
+with
+    static member CreateDefault () = { UserName = ""; CreateUserApiState = NotAsked }
+
+let eventToInputValue (event: Browser.Types.Event): string = (event.target :?> Browser.Types.HTMLInputElement).value
+
+let toUserInputModel model: UserCreateInputModel = { Name = model.UserName }
 
 type Msg =
-    | OnDownloadClicked
-    | ResetClicked
-    | OnDownloadedSuccess of string
-    | OnDownloadedFail of exn
+    | UserNameChanged of string
+    | SubmitClicked
+    | UserCreated of UserCreatedOutputModel
+    | UserCreateError of ApiError
 
 open Fable.Core
 open Fable.Remoting.Client
-open Api.BookListing.Models
 
-// get a typed-proxy for the service
 let userApi =
   Remoting.createApi()
-  |> Remoting.withRouteBuilder UserApi.routeBuilder
+  |> Remoting.withRouteBuilder IUserApi.RouteBuilder
   |> Remoting.buildProxy<IUserApi>
-
 
 [<Emit("Math.random()")>]
 let getRandom(): float = jsNative
-    
-let downloadAsync path = 
-    async {
-        do! Async.Sleep(1000) // emulate work
-        
-        let! result = userApi.create { Name = "Rita" }
-        sprintf "Path: %A. Data: from network!" result
 
-                
-        return result.Id.ToString()
-    } 
+module Cmd =
+    let exnToError (e:exn): ApiError = InternalError
+
+    open Elmish
+    
+    module OfAsync =
+        let eitherAsResult f args okMsg errorMsg =
+           let mapResult = function
+                           | Ok data -> okMsg data
+                           | ApiResponse.Error error -> errorMsg error
+           Cmd.OfAsync.either f args mapResult (exnToError >> errorMsg)
     
 open Elmish
 
 let init () =
-    Model.createDefault (), Cmd.none
+    Model.CreateDefault (), Cmd.none
     
 let update message model =
     match message with
-    | OnDownloadClicked ->
-        model, Cmd.OfAsync.either downloadAsync "/randomData" OnDownloadedSuccess OnDownloadedFail
-    | OnDownloadedSuccess data ->
-        { model with downloaded = Ok data }, Cmd.none
-    | OnDownloadedFail ex ->
-        { model with downloaded = Error ex.Message }, Cmd.none
-    | ResetClicked ->
-        Model.createDefault (), Cmd.none
+    | UserNameChanged name -> { model with UserName = name }, Cmd.none
+    | SubmitClicked -> 
+        let userModel = toUserInputModel model
+        { model with CreateUserApiState = Loading }, Cmd.OfAsync.eitherAsResult userApi.create userModel UserCreated UserCreateError
+    | UserCreateError error ->
+        { model with CreateUserApiState = Error error }, Cmd.none
+    | UserCreated output ->
+        // TODO: redirect on success
+        { model with CreateUserApiState = CreatedUser }, Cmd.none
 
 open Fable.React
 open Fable.React.Props
         
 let view (model: Model) dispatch =
    let resultView =
-       match model.downloaded with
-       | Ok r ->
-           h3 [ Style [CSSProp.Color "blue"] ] [ str r ]
-       | Error er ->
-           h3 [ Style [CSSProp.Color "red"] ] [ str er ]
-   
+       match model.CreateUserApiState with
+       | NotAsked -> span [] []
+       | Loading -> span [] [ str "..." ]
+       | Error e -> span [] [ str "Error" ]
+       | CreatedUser -> span [] [ str "User created" ]
+
    div [] [
-       h1 [] [ str "React Elmish demo" ]
+       h1 [] [ str "Sign up" ]
        
-       button [ OnClick (fun _ -> dispatch OnDownloadClicked) ] [ str "Download" ]
-       button [ OnClick (fun _ -> dispatch ResetClicked) ] [ str "Reset" ]
-       div [] [ h2 [] [ str "Download result:" ]; resultView ]
+       input [
+               OnChange (eventToInputValue >> UserNameChanged >> dispatch)
+               Type "text"
+               Value model.UserName
+           ]
+       button [ OnClick (fun _ -> dispatch SubmitClicked) ] [ str "Sign up" ]
+       div [] [ resultView ]
    ]
    
 open Elmish.React

@@ -10,6 +10,9 @@
     <PackageReference Include="Fable.Core" Version="3.1.5" />
     <PackageReference Include="Fable.Elmish" Version="3.1.0" />
     <PackageReference Include="Fable.Elmish.React" Version="3.0.1" />
-    <PackageReference Include="Fable.Remoting.Client" Version="7.2.0"/>
+    <PackageReference Include="Fable.Remoting.Client" Version="7.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Core.fsproj" />
   </ItemGroup>
 </Project>
