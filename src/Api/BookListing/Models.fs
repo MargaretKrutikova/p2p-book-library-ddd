@@ -1,6 +1,7 @@
 namespace Api.BookListing.Models
 
 open System
+open Core.BookListing.Service
 
 [<CLIMutable>]
 type UserCreateInputModel = {
@@ -31,9 +32,14 @@ type ListingOutputModel = {
     Title: string
 }
 
+type ApiError = 
+    | UserNotFound
+    | ListingNotFound
+    | InternalError
+
 type IUserApi = {
-    create: UserCreateInputModel -> Async<UserCreatedOutputModel>
-    getById: string -> Async<UserCreatedOutputModel> 
+    create: UserCreateInputModel -> Async<Result<UserCreatedOutputModel, ApiError>>
+    getById: string -> Async<UserCreatedOutputModel>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 

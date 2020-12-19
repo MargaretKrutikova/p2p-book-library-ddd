@@ -1,7 +1,6 @@
 module Core.BookListing.Domain
 
 open Core.Common.SimpleTypes
-open System
 
 type BookListingDomainError =
   | ValidationError of BookListingValidationError
