@@ -11,8 +11,8 @@ type Route =
 
 let parseUrl = function
   | [ ] -> Route.Home
-  | [ "sign-in" ] -> Route.SignIn
-  | [ "sign-up" ] -> Route.SignUp
+  | [ "signin" ] -> Route.SignIn
+  | [ "signup" ] -> Route.SignUp
   | [ "listings" ] -> Route.AllBookListings
   | [ "my-pages" ] -> Route.MyBookListings
   | _ -> Route.NotFound
