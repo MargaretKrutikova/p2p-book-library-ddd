@@ -1,4 +1,4 @@
-module App.Router
+module Client.Router
 
 [<RequireQualifiedAccess>]
 type Route =
