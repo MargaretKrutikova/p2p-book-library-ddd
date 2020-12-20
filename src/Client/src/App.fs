@@ -7,24 +7,32 @@ open Elmish.React
 open Feliz
 open Router
 
+type UserId = Guid
+
 type State = {
   CurrentPage: Route
+  UserId: UserId option
 }
 
-type Msg = PageChanged of Route
+type Msg = 
+    | PageChanged of Route
+    | UserCreated of UserId
 
-let init () = { CurrentPage = Route.SignUp }, Cmd.none
+let init () = { CurrentPage = Route.SignUp; UserId = None }, Cmd.none
 
 let update msg state =
     match msg with
     | PageChanged nextPage -> { state with CurrentPage = nextPage }, Cmd.none
+    | UserCreated userId -> { state with CurrentPage = Route.MyBookListings; UserId = Some userId }, Cmd.none
 
 let view model dispatch =
+    let handleUserCreated id = UserCreated id |> dispatch
+
     let currentPage =
-        match model.CurrentPage with
-        | Route.Home -> Html.h1 "Home"
-        | Route.SignUp -> Signup.view ()
-        | Route.MyBookListings -> MyBookListings.view {| userId = Guid.Empty |}
+        match model.CurrentPage, model.UserId with
+        | Route.Home, _ -> Html.h1 "Home"
+        | Route.SignUp, None -> Signup.view {| onUserCreated = handleUserCreated |}
+        | Route.MyBookListings, Some userId -> MyBookListings.view {| userId = userId |}
         | _ -> Html.h1 "Not Found"
 
     React.router [

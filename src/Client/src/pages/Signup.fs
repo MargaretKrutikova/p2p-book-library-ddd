@@ -1,5 +1,6 @@
 module Client.Pages.Signup
 
+open System
 open Api.BookListing.Models
 open Client.Utils
 open Feliz
@@ -30,7 +31,9 @@ type Msg =
 let init () =
     Model.CreateDefault (), Cmd.none
     
-let update (message:Msg) (model:Model) : Model * Cmd<Msg> =
+type OnUserCreated = Guid -> unit
+
+let update (onUserCreated: OnUserCreated) (message:Msg) (model:Model) : Model * Cmd<Msg> =
     match message with
     | UserNameChanged name -> { model with UserName = name }, Cmd.none
     | SubmitClicked -> 
@@ -39,10 +42,10 @@ let update (message:Msg) (model:Model) : Model * Cmd<Msg> =
     | UserCreateError error ->
         { model with CreateUserApiState = Error error }, Cmd.none
     | UserCreated output ->
-        // TODO: redirect on success
-        { model with CreateUserApiState = CreatedUser }, Cmd.none
-let view = React.functionComponent(fun () ->
-   let model, dispatch = React.useElmish(init, update, [| |])        
+        { model with CreateUserApiState = CreatedUser }, Cmd.ofSub (fun _ -> onUserCreated output.Id)
+
+let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}) ->
+   let model, dispatch = React.useElmish(init, update props.onUserCreated, [| |])        
    let resultView =
        match model.CreateUserApiState with
        | NotAsked -> Html.span []
