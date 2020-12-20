@@ -47,5 +47,6 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
     create: ListingCreateInputModel -> Async<ListingCreatedOutputModel>
+    getByUserId: Guid -> Async<ApiResponse<ListingOutputModel list>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName
