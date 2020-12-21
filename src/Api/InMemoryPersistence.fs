@@ -6,9 +6,11 @@ open Core.Common.Persistence
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 
+// TODO: split into several and move into core layer
 type Persistence = {
   GetUserListings: Queries.GetUserListings
   GetUserById: Queries.GetUserById
+  GetUserByName: Queries.GetUserByName
   GetListingById: Queries.GetListingById
   CreateListing: Commands.CreateListing
   UpdateListing: Commands.UpdateListing
@@ -35,6 +37,14 @@ module InMemoryPersistence =
         |> Result.requireSome Queries.MissingRecord
         |> Task.FromResult
 
+    let getUserByName: Queries.GetUserByName =
+      fun userName ->
+        users 
+        |> Seq.filter (fun user -> user.Name = userName)
+        |> Seq.tryHead
+        |> Result.requireSome Queries.MissingRecord
+        |> Task.FromResult
+    
     let getListingById: Queries.GetListingById =
       fun listingId ->
         listings 
@@ -82,6 +92,7 @@ module InMemoryPersistence =
       GetUserListings = getUserListings
       GetUserById = getUserById
       GetListingById = getListingById
+      GetUserByName = getUserByName
       CreateListing = createListing
       CreateUser = createUser
       UpdateListing = updateListing

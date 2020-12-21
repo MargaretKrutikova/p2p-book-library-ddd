@@ -28,6 +28,7 @@ module Queries =
   type GetListingById = ListingId -> DbResult<ListingReadModel>
   type GetUserListings = UserId -> DbResult<ListingReadModel seq>
   type GetUserById = UserId -> DbResult<UserReadModel>
+  type GetUserByName = string -> DbResult<UserReadModel>
 
 module Commands =
   type DbWriteError =
