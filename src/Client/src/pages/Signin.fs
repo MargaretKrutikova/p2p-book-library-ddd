@@ -62,7 +62,7 @@ let view = React.functionComponent(fun (props: {| onUserLoggedIn: OnUserLoggedIn
                    prop.value model.UserName
                    prop.type' "Text"
                ]
-           Html.button [ prop.onClick (fun _ -> dispatch LoginClicked); prop.children [Html.text "Sign up" ] ]
+           Html.button [ prop.onClick (fun _ -> dispatch LoginClicked); prop.children [Html.text "Sign in" ] ]
            Html.div [ resultView ]
        ]
 )

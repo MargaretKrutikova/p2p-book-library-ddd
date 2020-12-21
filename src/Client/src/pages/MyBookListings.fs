@@ -68,7 +68,7 @@ let addBookListingView inputModel dispatch =
     let updateTitle str: NewBookListingInputModel = { inputModel with Title = str }
 
     Html.div [
-       Html.h1 [ prop.children [ Html.text "Sign up" ] ]
+       Html.h1 [ prop.children [ Html.text "Add book listing" ] ]
        Html.form [
            Html.input [
                    prop.onChange (eventToInputValue >> updateAuthor >> NewBookListingInputChanged >> dispatch)

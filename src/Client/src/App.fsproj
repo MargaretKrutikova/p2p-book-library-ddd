@@ -8,6 +8,7 @@
     <Compile Include="Api.fs" />
     <Compile Include="pages/MyBookListings.fs" />
     <Compile Include="pages/Signup.fs" />
+    <Compile Include="pages/Signin.fs" />
     
     <Compile Include="Router.fs" />
     <Compile Include="App.fs" />

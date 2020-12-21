@@ -1,6 +1,7 @@
 module Client.App
 
 open System
+open Api.BookListing.Models
 open Client.Pages
 open Elmish
 open Elmish.React
@@ -11,35 +12,42 @@ type UserId = Guid
 
 type State = {
   CurrentPage: Route
-  UserId: UserId option
+  LoggedInUser: UserOutputModel option
 }
 
 type Msg = 
     | PageChanged of Route
-    | UserCreated of UserId
+    | UserCreated
+    | UserLoggedIn of UserOutputModel
 
 let init () = 
     let initialUrl = parseUrl (Router.currentUrl())
-    { CurrentPage = initialUrl; UserId = None }, Cmd.none
-
-let navigateToMyBookListings () =
-    Route.MyBookListings |> urlToRoute |> Router.navigate
+    { CurrentPage = initialUrl; LoggedInUser = None }, Cmd.none
 
 let update msg state =
-    match msg with
-    | PageChanged nextPage -> 
-        { state with CurrentPage = nextPage }, Cmd.none
-    | UserCreated userId -> 
-        { state with CurrentPage = Route.MyBookListings; UserId = Some userId }, Cmd.ofSub (fun _ -> navigateToMyBookListings ())
-
-let view model dispatch =
-    let handleUserCreated id = UserCreated id |> dispatch
+    match msg with    
+    | PageChanged nextPage ->
+        let allowedPage =
+             match state.LoggedInUser with
+             | Some _ -> loggedInPageOrDefault nextPage
+             | None -> loggedOutPageOrDefault nextPage
+        { state with CurrentPage = allowedPage }, Cmd.none
+    | UserCreated -> 
+        state, Cmd.ofSub (fun _ -> navigateToSignIn ())
+    | UserLoggedIn user ->
+        // TODO: save cookies with the logged in user name
+        { state with LoggedInUser = Some user }, Cmd.ofSub (fun _ -> navigateToMyBookListings ())
+        
+let view model (dispatch: Msg -> unit) =
+    let handleUserCreated _ = dispatch UserCreated
+    let handleUserLoggedIn user = UserLoggedIn user |> dispatch
 
     let currentPage =
-        match model.CurrentPage, model.UserId with
+        match model.CurrentPage, model.LoggedInUser with
         | Route.Home, _ -> Html.h1 "Home"
         | Route.SignUp, None -> Signup.view {| onUserCreated = handleUserCreated |}
-        | Route.MyBookListings, Some userId -> MyBookListings.view {| userId = userId |}
+        | Route.SignIn, None -> Signin.view {| onUserLoggedIn = handleUserLoggedIn |}
+        | Route.MyBookListings, Some user -> MyBookListings.view {| userId = user.UserId |}
         | _ -> Html.h1 "Not Found"
 
     React.router [

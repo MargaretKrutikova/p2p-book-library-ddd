@@ -1,5 +1,7 @@
 module Client.Router
 
+open Feliz.Router
+
 [<RequireQualifiedAccess>]
 type Route =
   | Home
@@ -14,13 +16,35 @@ let parseUrl = function
   | [ "signin" ] -> Route.SignIn
   | [ "signup" ] -> Route.SignUp
   | [ "listings" ] -> Route.AllBookListings
-  | [ "my-pages" ] -> Route.MyBookListings
+  | [ "my-listings" ] -> Route.MyBookListings
   | _ -> Route.NotFound
 
 let urlToRoute = function
   | Route.Home -> ""
-  | Route.SignIn -> "sign-in"
-  | Route.SignUp -> "sign-up"
+  | Route.SignIn -> "signin"
+  | Route.SignUp -> "signup"
   | Route.AllBookListings -> "listings"
-  | Route.MyBookListings -> "my-pages"
+  | Route.MyBookListings -> "my-listings"
   | _ -> ""
+
+let navigateToMyBookListings () =
+    Route.MyBookListings |> urlToRoute |> Router.navigate
+
+let navigateToSignIn () =
+    Route.SignIn |> urlToRoute |> Router.navigate
+
+let canViewIfLoggedIn route =
+    match route with
+    | Route.MyBookListings -> true
+    | _ -> false
+
+let canViewIfLoggedOut =
+    function 
+    | Route.MyBookListings -> false
+    | _ -> false
+
+let loggedInPageOrDefault page =
+    if canViewIfLoggedIn page then page else Route.Home
+
+let loggedOutPageOrDefault page =
+    if canViewIfLoggedOut page then page else Route.SignIn
