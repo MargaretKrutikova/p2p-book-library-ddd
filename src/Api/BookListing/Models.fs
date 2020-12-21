@@ -1,10 +1,20 @@
 namespace Api.BookListing.Models
 
 open System
-open Core.BookListing.Service
 
 [<CLIMutable>]
 type UserCreateInputModel = {
+    Name: string
+}
+
+[<CLIMutable>]
+type UserLoginInputModel = {
+    Name: string
+}
+
+[<CLIMutable>]
+type UserOutputModel = {
+    UserId: Guid
     Name: string
 }
 
@@ -42,7 +52,7 @@ type ApiResponse<'a> = Result<'a, ApiError>
 
 type IUserApi = {
     create: UserCreateInputModel -> Async<ApiResponse<UserCreatedOutputModel>>
-    getById: Guid -> Async<ApiResponse<UserCreatedOutputModel>>
+    login: UserLoginInputModel -> Async<ApiResponse<UserOutputModel>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 

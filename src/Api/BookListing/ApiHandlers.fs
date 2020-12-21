@@ -23,6 +23,13 @@ let createUser (root: CompositionRoot) (userModel: UserCreateInputModel) =
         do! root.CreateUser { UserId = UserId.create userId; Name = userModel.Name }
         let response: UserCreatedOutputModel = { Id = userId }
         return response
+  }
+
+let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
+    taskResult {
+        let! user = root.GetUserByName userModel.Name
+        let response: UserOutputModel = { UserId = user.Id |> UserId.value; Name = user.Name }
+        return response
   } 
 
 let createListing (root: CompositionRoot) (listingModel: ListingCreateInputModel) =
