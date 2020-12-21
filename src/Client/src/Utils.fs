@@ -1,5 +1,6 @@
 module Client.Utils
 
+open System
 open Api.BookListing.Models
 open Fable.Core
 
@@ -7,6 +8,8 @@ open Fable.Core
 let getRandom(): float = jsNative
 
 let eventToInputValue (event: Browser.Types.Event): string = (event.target :?> Browser.Types.HTMLInputElement).value
+
+let stringNotEmpty str = String.IsNullOrWhiteSpace str
 
 module Cmd =
     let exnToError (e:exn): ApiError = InternalError

@@ -20,10 +20,15 @@ type Msg =
 
 let init () = { CurrentPage = Route.SignUp; UserId = None }, Cmd.none
 
+let navigateToMyBookListings () =
+    Route.MyBookListings |> urlToRoute |> Router.navigate
+
 let update msg state =
     match msg with
-    | PageChanged nextPage -> { state with CurrentPage = nextPage }, Cmd.none
-    | UserCreated userId -> { state with CurrentPage = Route.MyBookListings; UserId = Some userId }, Cmd.none
+    | PageChanged nextPage -> 
+        { state with CurrentPage = nextPage }, Cmd.none
+    | UserCreated userId -> 
+        { state with CurrentPage = Route.MyBookListings; UserId = Some userId }, Cmd.ofSub (fun _ -> navigateToMyBookListings ())
 
 let view model dispatch =
     let handleUserCreated id = UserCreated id |> dispatch
