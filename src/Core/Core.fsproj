@@ -11,6 +11,7 @@
     <Compile Include="BookListing/BookListing.Domain.fs" />
     <Compile Include="BookListing/BookListing.Implementation.fs" />
     <Compile Include="BookListing/BookListing.Service.fs" />
+    <Compile Include="Users/User.Service.fs" />
   </ItemGroup>
 
   <ItemGroup>

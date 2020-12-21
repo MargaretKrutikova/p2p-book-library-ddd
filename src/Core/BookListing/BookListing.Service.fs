@@ -83,20 +83,6 @@ module RequestToBorrowBook =
         do! updateListing updateModel |> TaskResult.mapError (fun _ -> ServiceError)
       }
 
-module CreateUser =
-  type Composed = CreateUserDto -> BookListingCommandResult
-  type Service =  Commands.CreateUser -> Composed
-
-  let execute: Service =
-    fun createUser dto -> 
-      taskResult {
-        let userModel: Commands.UserCreateModel = {
-          UserId = dto.UserId
-          Name = dto.Name
-        }
-        do! createUser userModel |> TaskResult.mapError (fun _ -> ServiceError)
-      }
-
 module GetUserListings =
   type Composed = UserId -> BookListingReadResult<Queries.ListingReadModel list>
   type Service = Queries.GetUserById -> Queries.GetUserListings -> Composed

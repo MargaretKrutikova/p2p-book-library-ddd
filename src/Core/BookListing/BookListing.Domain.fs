@@ -20,8 +20,3 @@ type CreateBookListingDto = {
   Title: string
   Author: string
 }
-
-type CreateUserDto = {
-  UserId: UserId
-  Name: string
-}
