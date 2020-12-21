@@ -25,14 +25,12 @@ let createUser (root: CompositionRoot) (userModel: UserCreateInputModel) =
         return response
   } 
 
-let createListing (root: CompositionRoot) (userIdStr: string) (listingModel: ListingCreateInputModel) =
+let createListing (root: CompositionRoot) (listingModel: ListingCreateInputModel) =
   taskResult {
-      let userId = Guid.Parse userIdStr
-
       let listingId = Guid.NewGuid ()
       let listingToCreate: CreateBookListingDto = {
           NewListingId = ListingId.create listingId
-          UserId = UserId.create userId
+          UserId = UserId.create listingModel.UserId
           Title = listingModel.Title
           Author = listingModel.Author
       }
@@ -44,11 +42,9 @@ let createListing (root: CompositionRoot) (userIdStr: string) (listingModel: Lis
       return response
   }
 
-let getUserListings (root: CompositionRoot) (userIdStr: string) =
+let getUserListings (root: CompositionRoot) (userId: Guid) =
       taskResult {
-        let userId = userIdStr |> Guid.Parse |> UserId.create
-        
-        let! listings = root.GetUserListings userId 
+        let! listings = UserId.create userId |> root.GetUserListings 
         return listings
             |> Seq.map toListingOutputModel
             |> Seq.toList

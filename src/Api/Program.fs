@@ -35,6 +35,7 @@ open Api.BookListing.RemotingHandlers
 let webApp (root:CompositionRoot.CompositionRoot) =
     choose [
         createUserApiHandler ()
+        createBookListingApiHandler () 
     ]
 // ---------------------------------
 // Error handler

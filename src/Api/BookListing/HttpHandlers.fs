@@ -9,6 +9,7 @@ open Core.BookListing.Service
 open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
 open Giraffe
+open System
 
 let private errorToHttpResponse (next: HttpFunc) (ctx : HttpContext) (error: BookListingError) =
     match error with
@@ -21,7 +22,7 @@ let private toHttpResponse (next: HttpFunc) (ctx : HttpContext) (result: Result<
     | Ok data -> json data next ctx
     | Error error -> errorToHttpResponse next ctx error
 
-let handleGetListings (userId: string) =
+let handleGetListings (userId: Guid) =
   fun (next : HttpFunc) (ctx : HttpContext) ->
       task {
           let root = ctx.GetService<CompositionRoot>()
@@ -38,12 +39,12 @@ let handleCreateUser (next: HttpFunc) (ctx : HttpContext) =
       return! result |> toHttpResponse next ctx
   } 
   
-let handleCreateListing (userId: string) =
+let handleCreateListing () =
   fun (next : HttpFunc) (ctx : HttpContext) ->
       task {
           let! listingModel = ctx.BindJsonAsync<ListingCreateInputModel>()
           let root = ctx.GetService<CompositionRoot>()
 
-          let! result = createListing root userId listingModel
+          let! result = createListing root listingModel
           return! result |> toHttpResponse next ctx
       }

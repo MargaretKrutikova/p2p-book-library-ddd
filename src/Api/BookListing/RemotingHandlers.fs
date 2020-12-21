@@ -24,22 +24,35 @@ let private failOnExn (res: Result<'a, exn>) =
     | Ok value -> value
     | Error ex -> raise ex
 
-let private taskToApiResult = AsyncResult.ofTask >> Async.map (failOnExn >> Result.mapError toApiError)
+let private taskToApiResult task = task |> (AsyncResult.ofTask >> Async.map (failOnExn >> Result.mapError toApiError))
 
-let getById (id: string): Async<UserCreatedOutputModel> =
+let getById (id: Guid): Async<Result<UserCreatedOutputModel, ApiError>> =
     async {
-        return { Id = Guid.NewGuid () }
+        return Ok { Id = id }
     }
 
-let createApiFromContext (ctx:HttpContext): IUserApi = 
+let private createUserApiFromContext (ctx:HttpContext): IUserApi = 
     let root = ctx.GetService<CompositionRoot>()
     { 
         create = createUser root >> taskToApiResult
-        getById = getById 
+        getById = getById
+    }
+
+let private createBookListingApiFromContext (ctx: HttpContext): IBookListingApi =
+    let root = ctx.GetService<CompositionRoot>()
+    {
+        getByUserId = getUserListings root >> taskToApiResult
+        create = createListing root >> taskToApiResult
     }
 
 let createUserApiHandler () : HttpHandler = 
     Remoting.createApi()
     |> Remoting.withRouteBuilder IUserApi.RouteBuilder
-    |> Remoting.fromContext createApiFromContext
+    |> Remoting.fromContext createUserApiFromContext
+    |> Remoting.buildHttpHandler 
+
+let createBookListingApiHandler () : HttpHandler = 
+    Remoting.createApi()
+    |> Remoting.withRouteBuilder IBookListingApi.RouteBuilder
+    |> Remoting.fromContext createBookListingApiFromContext
     |> Remoting.buildHttpHandler 
