@@ -84,7 +84,9 @@ let addBookListingView inputModel dispatch =
                ]
            Html.button [ 
                prop.type' "submit"
-               prop.onClick (fun _ -> dispatch AddBookListingClicked)
+               prop.onClick (fun e -> 
+                                e.preventDefault ()
+                                dispatch AddBookListingClicked)
                prop.children [Html.text "Add" ] ]
         ]
    ]

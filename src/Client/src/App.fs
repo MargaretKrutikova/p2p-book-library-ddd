@@ -18,7 +18,9 @@ type Msg =
     | PageChanged of Route
     | UserCreated of UserId
 
-let init () = { CurrentPage = Route.SignUp; UserId = None }, Cmd.none
+let init () = 
+    let initialUrl = parseUrl (Router.currentUrl())
+    { CurrentPage = initialUrl; UserId = None }, Cmd.none
 
 let navigateToMyBookListings () =
     Route.MyBookListings |> urlToRoute |> Router.navigate
