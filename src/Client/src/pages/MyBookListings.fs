@@ -21,14 +21,12 @@ type NewBookListingInputModel = {
 }
 
 type Model = {
-    UserId: Guid
-    MyBookListingsApiState: MyBookListingsApiState
+    MyBookListings: MyBookListingsApiState
     NewBookListing: NewBookListingInputModel
 }
 with
-    static member CreateDefault (userId: Guid) = { 
-        UserId = userId
-        MyBookListingsApiState = Loading
+    static member CreateDefault () = { 
+        MyBookListings = Loading
         NewBookListing = { Title = ""; Author = "" }
     }
     
@@ -36,8 +34,8 @@ let canAddBookListing inputModel =
     inputModel.Author |> stringNotEmpty &&
     inputModel.Title |> stringNotEmpty
 
-let toCreateListingInputModel (model: Model): ListingCreateInputModel = {
-   UserId = model.UserId
+let toCreateListingInputModel (userId: Guid) (model: Model): ListingCreateInputModel = {
+   UserId = userId
    Title = model.NewBookListing.Title
    Author = model.NewBookListing.Author
 }
@@ -51,17 +49,19 @@ type Msg =
     | AddBookListingError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
-    Model.CreateDefault userId, Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+    Model.CreateDefault (), Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
     
-let update (message: Msg) (model: Model): Model * Cmd<Msg> =
+let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
-    | ReceivedMyBookListings data -> { model with MyBookListingsApiState = Data data }, Cmd.none
-    | MyBookListingsError error -> { model with MyBookListingsApiState = Error error }, Cmd.none
+    | ReceivedMyBookListings data -> { model with MyBookListings = Data data }, Cmd.none
+    | MyBookListingsError error -> { model with MyBookListings = Error error }, Cmd.none
     | NewBookListingInputChanged inputModel -> { model with NewBookListing = inputModel }, Cmd.none
     | AddBookListingClicked -> 
-        model, Cmd.OfAsync.eitherAsResult bookListingApi.create (toCreateListingInputModel model) BookListingAdded AddBookListingError
-    | BookListingAdded listing -> model, Cmd.none
-    | AddBookListingError error -> model, Cmd.none
+        let addBookListingModel = toCreateListingInputModel userId model
+        model, Cmd.OfAsync.eitherAsResult bookListingApi.create addBookListingModel BookListingAdded AddBookListingError
+    | BookListingAdded _ -> 
+        { model with MyBookListings = Loading }, Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+    | AddBookListingError _ -> model, Cmd.none
 
 let addBookListingView inputModel dispatch =
     let updateAuthor str: NewBookListingInputModel = { inputModel with Author = str }
@@ -97,8 +97,8 @@ let listingsView (listings: ListingOutputModel list) =
     ]
 
 let view = React.functionComponent(fun (props: {| userId: Guid |}) ->
-   let model, dispatch = React.useElmish(init props.userId, update, [| |])        
-   match model.MyBookListingsApiState with
+   let model, dispatch = React.useElmish(init props.userId, update props.userId, [| |])        
+   match model.MyBookListings with
        | NotAsked -> Html.span []
        | Loading -> Html.text "..."
        | Error e -> Html.text "Error"
