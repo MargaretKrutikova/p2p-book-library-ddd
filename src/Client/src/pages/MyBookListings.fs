@@ -1,6 +1,7 @@
 module Client.Pages.MyBookListings
 
 open Api.BookListing.Models
+open Api.BookListing.SignalRHub
 open Client.Utils
 open Client.Api
 
@@ -8,6 +9,9 @@ open System
 open Feliz
 open Elmish
 open Feliz.UseElmish
+open Fable.SignalR.Feliz
+open Fable.SignalR
+open Fable.SignalR.Elmish
 
 type MyBookListingsApiState =
     | NotAsked
@@ -20,15 +24,19 @@ type NewBookListingInputModel = {
     Title: string
 }
 
-type Model = {
-    MyBookListings: MyBookListingsApiState
-    NewBookListing: NewBookListingInputModel
-}
-with
+type Model =
+    {
+        MyBookListings: MyBookListingsApiState
+        NewBookListing: NewBookListingInputModel
+        Hub: Elmish.Hub<Action,Response> option }
+    interface System.IDisposable with
+        member this.Dispose () =
+            this.Hub |> Option.iter (fun hub -> hub.Dispose())
     static member CreateDefault () = { 
-        MyBookListings = Loading
-        NewBookListing = { Title = ""; Author = "" }
-    }
+            MyBookListings = Loading
+            NewBookListing = { Title = ""; Author = "" }
+            Hub = None
+        }
     
 let canAddBookListing inputModel =
     inputModel.Author |> stringNotEmpty &&
@@ -57,13 +65,15 @@ let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     | MyBookListingsError error -> { model with MyBookListings = Error error }, Cmd.none
     | NewBookListingInputChanged inputModel -> { model with NewBookListing = inputModel }, Cmd.none
     | AddBookListingClicked -> 
-        let addBookListingModel = toCreateListingInputModel userId model
-        model, Cmd.OfAsync.eitherAsResult bookListingApi.create addBookListingModel BookListingAdded AddBookListingError
+        // let addBookListingModel = toCreateListingInputModel userId model
+        model, Cmd.none // Cmd.ofSub (BookListingSignalRAction.CreateBookListing addBookListingModel)
+        //Cmd.OfAsync.eitherAsResult bookListingApi.create addBookListingModel BookListingAdded AddBookListingError
     | BookListingAdded _ -> 
         { model with MyBookListings = Loading }, Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
     | AddBookListingError _ -> model, Cmd.none
 
-let addBookListingView inputModel dispatch =
+let addBookListingView (hub: Hub<BookListingSignalRAction, Response>) userId model dispatch =
+    let inputModel = model.NewBookListing
     let updateAuthor str: NewBookListingInputModel = { inputModel with Author = str }
     let updateTitle str: NewBookListingInputModel = { inputModel with Title = str }
 
@@ -86,7 +96,8 @@ let addBookListingView inputModel dispatch =
                prop.type' "submit"
                prop.onClick (fun e -> 
                                 e.preventDefault ()
-                                dispatch AddBookListingClicked)
+                                toCreateListingInputModel userId model |> BookListingSignalRAction.CreateBookListing |> hub.send |> ignore
+                                )
                prop.children [Html.text "Add" ] ]
         ]
    ]
@@ -97,14 +108,22 @@ let listingsView (listings: ListingOutputModel list) =
     ]
 
 let view = React.functionComponent(fun (props: {| userId: Guid |}) ->
-   let model, dispatch = React.useElmish(init props.userId, update props.userId, [| |])        
+   let model, dispatch = React.useElmish(init props.userId, update props.userId, [| |])
+   let hub =
+        React.useSignalR<BookListingSignalRAction, Response>(fun hub -> 
+            hub.withUrl(Endpoints.Root)
+                .withAutomaticReconnect()
+                .onMessage <|
+                    function
+                    | Response.MyListings listings -> ReceivedMyBookListings listings |> dispatch
+        )
    match model.MyBookListings with
        | NotAsked -> Html.span []
        | Loading -> Html.text "..."
        | Error e -> Html.text "Error"
        | Data listings -> 
             Html.div [
-                addBookListingView model.NewBookListing dispatch
+                addBookListingView hub.current props.userId model dispatch
                 listingsView listings
             ]
 )

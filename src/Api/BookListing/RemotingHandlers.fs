@@ -1,5 +1,6 @@
 module Api.BookListing.RemotingHandlers
 
+open System.Threading.Tasks
 open Api.BookListing.Models
 open Api.BookListing.ApiHandlers
 open Api.CompositionRoot
@@ -57,3 +58,33 @@ let createBookListingApiHandler () : HttpHandler =
     |> Remoting.withRouteBuilder IBookListingApi.RouteBuilder
     |> Remoting.fromContext createBookListingApiFromContext
     |> Remoting.buildHttpHandler 
+
+
+module SignalRHubImpl =
+    open Fable.SignalR
+    open FSharp.Control.Tasks.V2
+    open SignalRHub
+
+    let update (root: CompositionRoot) (msg: BookListingSignalRAction) =
+        match msg with
+        | BookListingSignalRAction.CreateBookListing inputModel ->
+            taskResult {
+                let! _ = createListing root inputModel
+                let! all = getUserListings root inputModel.UserId
+                return Response.MyListings all
+            } |> Task.map (Result.defaultWith (fun _ -> failwith ""))
+
+    let invoke (msg: BookListingSignalRAction) (hubContext: FableHub) =
+        // let root = hubContext.Services.GetService(typedefof<CompositionRoot>) :?> CompositionRoot
+        // update root msg
+        task {return Response.MyListings List.Empty } 
+
+    let send (msg: BookListingSignalRAction) (hubContext: FableHub) =
+        //let root = hubContext.Services.GetService(typedefof<CompositionRoot>) :?> CompositionRoot
+//        taskResult {
+//            let! res = update root msg
+//            do! (hubContext :?> FableHub<BookListingSignalRAction,Response>).Clients.Caller.Send res
+//        } |> Task.map (Result.defaultWith (fun _ -> failwith "")) :> Task
+        task {return Response.MyListings List.Empty} :> Task
+        
+        

@@ -1,6 +1,7 @@
 module Api.App
 
 open System
+open Api.BookListing.SignalRHub
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
@@ -8,6 +9,9 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
+open Microsoft.AspNetCore.SignalR
+open Fable.SignalR
+
 open InMemoryPersistence
 
 open Api.BookListing.RemotingHandlers
@@ -52,7 +56,7 @@ let errorHandler (ex : Exception) (logger : ILogger) =
 let configureCors (builder : CorsPolicyBuilder) =
     builder
         .WithOrigins(
-            "http://localhost:5000")
+            "*")
        .AllowAnyMethod()
        .AllowAnyHeader()
        |> ignore
@@ -61,24 +65,40 @@ let compose (): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
     CompositionRoot.compose persistence
 
+
+
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
     let root = compose ()
     (match env.IsDevelopment() with
     | true  ->
         app.UseDeveloperExceptionPage()
+            .UseCors(configureCors)
+            .UseSignalR<BookListingSignalRAction, Response>(
+                                                           { EndpointPattern = Endpoints.Root
+                                                             Send = SignalRHubImpl.send
+                                                             Invoke = SignalRHubImpl.invoke
+                                                             Config = None }
+                                                       )
     | false ->
         app .UseGiraffeErrorHandler(errorHandler)
             //.UseHttpsRedirection()
             )
-        .UseCors(configureCors)
+         .UseCors(configureCors)
+        .UseSignalR<BookListingSignalRAction, Response>(
+                                                           { EndpointPattern = Endpoints.Root
+                                                             Send = SignalRHubImpl.send
+                                                             Invoke = SignalRHubImpl.invoke
+                                                             Config = None }
+                                                       )
         .UseGiraffe(webApp root)
 
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
     services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
-
+    services.AddSignalR() |> ignore
+    
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()
            .AddDebug() |> ignore
