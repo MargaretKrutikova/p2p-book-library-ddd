@@ -261,3 +261,10 @@ MyProject_coverage.xml
 .ionide
 
 .fake
+
+# TEMP
+src/App
+sqlite
+README.md
+
+app.db
