@@ -1,7 +1,7 @@
 module Client.Utils
 
 open System
-open Api.BookListing.Models
+open Api.Models
 open Fable.Core
 
 [<Emit("Math.random()")>]
@@ -12,7 +12,7 @@ let eventToInputValue (event: Browser.Types.Event): string = (event.target :?> B
 let stringNotEmpty str = String.IsNullOrWhiteSpace str
 
 module Cmd =
-    let exnToError (e:exn): ApiError = InternalError
+    let exnToError (e:exn): ApiError = ApiError.InternalError
 
     open Elmish
     

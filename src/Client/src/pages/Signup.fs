@@ -1,7 +1,7 @@
 module Client.Pages.Signup
 
 open System
-open Api.BookListing.Models
+open Api.Models
 open Client.Utils
 open Feliz
 open Elmish
@@ -20,12 +20,12 @@ type Model = {
 with
     static member CreateDefault () = { UserName = ""; CreateUserApiState = NotAsked }
 
-let toUserInputModel model: UserCreateInputModel = { Name = model.UserName }
+let toUserInputModel model: UserRegisterInputModel = { Name = model.UserName }
 
 type Msg =
     | UserNameChanged of string
     | SubmitClicked
-    | UserCreated of UserCreatedOutputModel
+    | UserCreated of UserRegisteredOutputModel
     | UserCreateError of ApiError
 
 let init () =
@@ -38,7 +38,7 @@ let update (onUserCreated: OnUserCreated) (message:Msg) (model:Model) : Model * 
     | UserNameChanged name -> { model with UserName = name }, Cmd.none
     | SubmitClicked -> 
         let userModel = toUserInputModel model
-        { model with CreateUserApiState = Loading }, Cmd.OfAsync.eitherAsResult Client.Api.userApi.create userModel UserCreated UserCreateError
+        { model with CreateUserApiState = Loading }, Cmd.OfAsync.eitherAsResult Client.Api.userApi.register userModel UserCreated UserCreateError
     | UserCreateError error ->
         { model with CreateUserApiState = Error error }, Cmd.none
     | UserCreated output ->

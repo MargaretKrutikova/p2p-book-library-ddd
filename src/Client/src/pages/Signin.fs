@@ -1,9 +1,10 @@
 module Client.Pages.Signin
 
-open Api.BookListing.Models
+open Api.Models
 open Client.Utils
 open Client.Api
 
+open Core.Domain.Errors
 open Feliz
 open Elmish
 open Feliz.UseElmish

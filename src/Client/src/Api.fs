@@ -1,7 +1,7 @@
 module Client.Api
 
 open Fable.Remoting.Client
-open Api.BookListing.Models
+open Api.Models
 
 let userApi =
   Remoting.createApi()

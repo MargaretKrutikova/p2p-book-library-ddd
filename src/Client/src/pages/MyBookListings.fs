@@ -1,6 +1,6 @@
 module Client.Pages.MyBookListings
 
-open Api.BookListing.Models
+open Api.Models
 open Client.Utils
 open Client.Api
 
@@ -13,7 +13,7 @@ type MyBookListingsApiState =
     | NotAsked
     | Loading
     | Error of ApiError
-    | Data of ListingOutputModel list
+    | Data of UserListingOutputModel list
 
 type NewBookListingInputModel = {
     Author: string
@@ -34,18 +34,18 @@ let canAddBookListing inputModel =
     inputModel.Author |> stringNotEmpty &&
     inputModel.Title |> stringNotEmpty
 
-let toCreateListingInputModel (userId: Guid) (model: Model): ListingCreateInputModel = {
+let toCreateListingInputModel (userId: Guid) (model: Model): ListingPublishInputModel = {
    UserId = userId
    Title = model.NewBookListing.Title
    Author = model.NewBookListing.Author
 }
 
 type Msg =
-    | ReceivedMyBookListings of ListingOutputModel list
+    | ReceivedMyBookListings of UserListingOutputModel list
     | MyBookListingsError of ApiError
     | NewBookListingInputChanged of NewBookListingInputModel
     | AddBookListingClicked
-    | BookListingAdded of ListingCreatedOutputModel
+    | BookListingAdded of ListingPublishedOutputModel
     | AddBookListingError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
@@ -58,7 +58,7 @@ let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     | NewBookListingInputChanged inputModel -> { model with NewBookListing = inputModel }, Cmd.none
     | AddBookListingClicked -> 
         let addBookListingModel = toCreateListingInputModel userId model
-        model, Cmd.OfAsync.eitherAsResult bookListingApi.create addBookListingModel BookListingAdded AddBookListingError
+        model, Cmd.OfAsync.eitherAsResult bookListingApi.publish addBookListingModel BookListingAdded AddBookListingError
     | BookListingAdded _ -> 
         { model with MyBookListings = Loading }, Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
     | AddBookListingError _ -> model, Cmd.none
@@ -91,7 +91,7 @@ let addBookListingView inputModel dispatch =
         ]
    ]
 
-let listingsView (listings: ListingOutputModel list) =
+let listingsView (listings: UserListingOutputModel list) =
     Html.ul [
         prop.children (listings |> Seq.map (fun l -> Html.li (l.Id.ToString())) |> Seq.toList)
     ]
