@@ -28,12 +28,19 @@ module CommandPersistenceOperations =
 
   type DbWriteResult = Task<Result<unit, DbWriteError>>
 
+  type UserCreateModel = {
+    UserId: UserId
+    Name: string
+  }
+
+  type CreateUser = UserCreateModel -> DbWriteResult
   type CreateListing = BookListing -> DbWriteResult
   type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
 
 type CommandPersistenceOperations = {
   GetUserById: CommandPersistenceOperations.GetUserById
   CreateListing: CommandPersistenceOperations.CreateListing
+  CreateUser: CommandPersistenceOperations.CreateUser
 }
 
 type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> Messages.PublishBookListingArgs -> CommandResult
@@ -42,6 +49,13 @@ let publishBookListing: PublishBookListing =
     taskResult {
       return ()
     }
+
+type RegisterUser = CommandPersistenceOperations.CreateUser -> Messages.RegisterUserArgs -> CommandResult    
+let registerUser: RegisterUser =
+  fun createUser args ->
+     taskResult {
+       return ()
+     }
 
 //type RequestToBorrowBook =
 //  PersistenceOperations.GetUserById -> PersistenceOperations.GetListingById -> Commands.UpdateListing -> Messages.RequestToBorrowBookArgs -> CommandResult
@@ -54,6 +68,7 @@ let publishBookListing: PublishBookListing =
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->
     match command with
+    | Messages.RegisterUser args -> registerUser persistence.CreateUser args
     | Messages.PublishBookListing args ->
       publishBookListing persistence.GetUserById persistence.CreateListing args
     | _ -> failwith ""

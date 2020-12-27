@@ -3,9 +3,9 @@ module Api.BookListing.ApiHandlers
 open Api.CompositionRoot
 open Api.BookListing.Models
 
-open Core.BookListing.Domain
 open Core.Common.SimpleTypes
 open Core.Common.Persistence
+open Core.Domain
 open FsToolkit.ErrorHandling.TaskResultCE
 open System
 
@@ -17,12 +17,36 @@ let private toListingOutputModel (listing: Queries.ListingReadModel) =
         Title = listing.Title
     }
 
+let private toPublishBookListingArgs (listingId: Guid) (listingModel: ListingCreateInputModel): Messages.PublishBookListingArgs = {
+    NewListingId = ListingId.create listingId
+    UserId = UserId.create listingModel.UserId 
+    Title = listingModel.Title
+    Author = listingModel.Author
+}
+
+let private toRegisterUserArgs (userId: Guid) (inputModel: UserCreateInputModel): Messages.RegisterUserArgs = {
+    UserId = UserId.create userId
+    Name = inputModel.Name
+}
+
 let createUser (root: CompositionRoot) (userModel: UserCreateInputModel) =
     taskResult {
         let userId = Guid.NewGuid ()
-        do! root.CreateUser { UserId = UserId.create userId; Name = userModel.Name }
+        let command = toRegisterUserArgs userId userModel |> Messages.RegisterUser
+        do! root.CommandHandler command
+        
         let response: UserCreatedOutputModel = { Id = userId }
         return response
+  }
+
+let createListing (root: CompositionRoot) (listingModel: ListingCreateInputModel) =
+  taskResult {
+      let listingId = Guid.NewGuid ()
+      let command = toPublishBookListingArgs listingId listingModel |> Messages.PublishBookListing  
+      do! root.CommandHandler command
+
+      let response: ListingCreatedOutputModel = { Id = listingId }
+      return response
   }
 
 let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
@@ -31,23 +55,6 @@ let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
         let response: UserOutputModel = { UserId = user.Id |> UserId.value; Name = user.Name }
         return response
   } 
-
-let createListing (root: CompositionRoot) (listingModel: ListingCreateInputModel) =
-  taskResult {
-      let listingId = Guid.NewGuid ()
-      let listingToCreate: CreateBookListingDto = {
-          NewListingId = ListingId.create listingId
-          UserId = UserId.create listingModel.UserId
-          Title = listingModel.Title
-          Author = listingModel.Author
-      }
-      
-      do! root.CreateListing listingToCreate
-      let response: ListingCreatedOutputModel = {
-          Id = listingId
-      }
-      return response
-  }
 
 let getUserListings (root: CompositionRoot) (userId: Guid) =
       taskResult {

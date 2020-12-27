@@ -19,8 +19,14 @@ module Messages =
     ListingId: ListingId
     BorrowerId: UserId
   }
+  
+  type RegisterUserArgs = {
+    UserId: UserId
+    Name: string
+  }
 
-  type Command = 
+  type Command =
+    | RegisterUser of RegisterUserArgs 
     | PublishBookListing of PublishBookListingArgs
     | RequestToBorrowBook of RequestToBorrowBookArgs
     | BorrowBook of BorrowBookArgs
