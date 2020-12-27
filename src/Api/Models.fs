@@ -43,22 +43,22 @@ type UserListingOutputModel = {
     Title: string
 }
 
-type ApiQueryError =
+type ApiError =
+    | ValidationError of ValidationError
+    | DomainError of DomainError
     | InternalError
+    | LoginFailure
 
-type UserLoginError =
-    | FailedToLogin
-
-type ApiCommandResponse<'a> = Result<'a, AppError>
+type ApiResponse<'a> = Result<'a, ApiError>
 
 type IUserApi = {
-    register: UserRegisterInputModel -> Async<ApiCommandResponse<UserRegisteredOutputModel>>
-    login: UserLoginInputModel -> Async<Result<UserOutputModel, UserLoginError>>
+    register: UserRegisterInputModel -> Async<ApiResponse<UserRegisteredOutputModel>>
+    login: UserLoginInputModel -> Async<ApiResponse<UserOutputModel>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
-    publish: ListingPublishInputModel -> Async<ApiCommandResponse<ListingPublishedOutputModel>>
-    getByUserId: Guid -> Async<Result<UserListingOutputModel list, ApiQueryError>>
+    publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
+    getByUserId: Guid -> Async<ApiResponse<UserListingOutputModel list>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

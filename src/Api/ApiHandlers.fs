@@ -3,6 +3,7 @@ module Api.ApiHandlers
 open Api.CompositionRoot
 open Api.Models
 
+open Core.Domain.Errors
 open Core.Domain.Messages
 open Core.Domain.Types
 open Core.Handlers
@@ -30,15 +31,21 @@ let private toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputMode
     Name = inputModel.Name
 }
 
-let private fromQueryError (queryError: QueryError): ApiQueryError =
+let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
-    | InternalError -> ApiQueryError.InternalError
+    | InternalError -> ApiError.InternalError
+
+let private fromAppError (appError: AppError): ApiError =
+    match appError with
+    | Validation error -> ValidationError error
+    | Domain error -> DomainError error
+    | ServiceError -> ApiError.InternalError
 
 let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
         let userId = Guid.NewGuid ()
         let command = toRegisterUserArgs userId userModel |> Command.RegisterUser
-        do! root.CommandHandler command
+        do! root.CommandHandler command |> TaskResult.mapError fromAppError
         
         let response: UserRegisteredOutputModel = { Id = userId }
         return response
@@ -48,7 +55,7 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
   taskResult {
       let listingId = Guid.NewGuid ()
       let command = toPublishBookListingArgs listingId listingModel |> Command.PublishBookListing  
-      do! root.CommandHandler command
+      do! root.CommandHandler command |> TaskResult.mapError fromAppError
 
       let response: ListingPublishedOutputModel = { Id = listingId }
       return response
@@ -56,8 +63,8 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
 
 let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
     taskResult {
-        let! userOption = root.GetUserByName userModel.Name |> TaskResult.mapError (fun _ -> FailedToLogin)
-        let! user = userOption |> Result.requireSome FailedToLogin
+        let! userOption = root.GetUserByName userModel.Name |> TaskResult.mapError (fun _ -> ApiError.LoginFailure)
+        let! user = userOption |> Result.requireSome ApiError.LoginFailure
         
         let response: UserOutputModel = { UserId = user.Id |> UserId.value; Name = user.Name }
         return response
