@@ -1,14 +1,14 @@
 module Core.Handlers.CommandHandlers
 
-open Core.Common.SimpleTypes
-open Core.Domain
-
-open Core.Domain.Types
-open FsToolkit.ErrorHandling.TaskResultCE
 open System.Threading.Tasks
+open FsToolkit.ErrorHandling.TaskResultCE
 
-type CommandResult = Task<Result<unit, Errors.AppError>>
-type CommandHandler = Messages.Command -> CommandResult
+open Core.Domain.Errors
+open Core.Domain.Messages
+open Core.Domain.Types
+
+type CommandResult = Task<Result<unit, AppError>>
+type CommandHandler = Command -> CommandResult
 
 module CommandPersistenceOperations = 
   type DbReadError =
@@ -43,14 +43,14 @@ type CommandPersistenceOperations = {
   CreateUser: CommandPersistenceOperations.CreateUser
 }
 
-type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> Messages.PublishBookListingArgs -> CommandResult
+type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
 let publishBookListing: PublishBookListing =
     fun getUserById createListing args ->
     taskResult {
       return ()
     }
 
-type RegisterUser = CommandPersistenceOperations.CreateUser -> Messages.RegisterUserArgs -> CommandResult    
+type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
 let registerUser: RegisterUser =
   fun createUser args ->
      taskResult {
@@ -68,7 +68,6 @@ let registerUser: RegisterUser =
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->
     match command with
-    | Messages.RegisterUser args -> registerUser persistence.CreateUser args
-    | Messages.PublishBookListing args ->
-      publishBookListing persistence.GetUserById persistence.CreateListing args
+    | RegisterUser args -> registerUser persistence.CreateUser args
+    | PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
     | _ -> failwith ""

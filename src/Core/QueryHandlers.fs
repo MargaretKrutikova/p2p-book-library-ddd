@@ -1,12 +1,14 @@
 module Core.Handlers.QueryHandlers
 
 open System.Threading.Tasks
-open Core.Common.SimpleTypes
-open Core.Domain
 open FsToolkit.ErrorHandling.TaskResultCE
 
-type QueryResult<'a> = Task<Result<'a, Errors.AppError>>
-type QueryHandler<'a> = Messages.Query -> QueryResult<'a>
+open Core.Domain.Types
+
+type QueryError =
+   | ConnectionError   
+
+type QueryResult<'a> = Task<Result<'a, QueryError>>
 
 type BookListingDto = {
    ListingId: ListingId
@@ -16,16 +18,29 @@ type BookListingDto = {
    Title: string
    Status: ListingStatus
 }
+
+type UserBookListingDto = {
+   ListingId: ListingId
+   Author: string
+   Title: string
+   Status: ListingStatus
+}
+
+type UserDto = {
+    Id: UserId
+    Name: string
+}
    
 module QueryPersistenceOperations =
-   type DbQueryError =
-       | ConnectionError
-       
-   type DbResult<'a> = Task<Result<'a, DbQueryError>>
-   type GetAllListings = unit -> DbResult<BookListingDto list> 
+   type DbResult<'a> = Task<Result<'a, QueryError>>
+   type GetAllListings = unit -> DbResult<BookListingDto list>
+   type GetListingsByUserId = UserId -> DbResult<UserBookListingDto seq>
+   type GetUserByName = string -> DbResult<UserDto option>
 
 type QueryPersistenceOperations = {
-  GetAllListings: QueryPersistenceOperations.GetAllListings
+  // GetAllListings: QueryPersistenceOperations.GetAllListings
+  GetListingsByUserId: QueryPersistenceOperations.GetListingsByUserId
+  GetUserByName: QueryPersistenceOperations.GetUserByName
 }
 
 type GetAllPublishedBookListings = unit -> QueryResult<BookListingDto list>
@@ -33,4 +48,18 @@ let getAllPublishedBookListings (getListings: QueryPersistenceOperations.GetAllL
   fun getListings ->
     taskResult {
        return List.Empty
+    }
+    
+type GetUserBookListings = UserId -> QueryResult<UserBookListingDto list>
+let getUserBookListings (getListingsByUserId: QueryPersistenceOperations.GetListingsByUserId): GetUserBookListings =
+  fun getListingsByUserId ->
+    taskResult {
+       return List.Empty
+    }
+    
+type GetUserByName = string -> QueryResult<UserDto option>
+let getUserByName (getUser: QueryPersistenceOperations.GetUserByName): GetUserByName =
+   fun getListingsByUserId ->
+    taskResult {
+       return None
     }
