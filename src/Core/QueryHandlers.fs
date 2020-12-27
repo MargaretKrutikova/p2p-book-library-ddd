@@ -1,6 +1,7 @@
 module Core.Handlers.QueryHandlers
 
 open System.Threading.Tasks
+open FsToolkit.ErrorHandling.Operator.TaskResult
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 
@@ -53,10 +54,8 @@ let getAllPublishedBookListings (getListings: QueryPersistenceOperations.GetAllL
     
 type GetUserBookListings = UserId -> QueryResult<UserBookListingDto list>
 let getUserBookListings (getListingsByUserId: QueryPersistenceOperations.GetListingsByUserId): GetUserBookListings =
-  fun getListingsByUserId ->
-    taskResult {
-       return List.Empty
-    }
+  fun userId ->
+    getListingsByUserId userId |> TaskResult.map (Seq.toList) 
     
 type GetUserByName = string -> QueryResult<UserDto option>
 let getUserByName (getUser: QueryPersistenceOperations.GetUserByName): GetUserByName =
