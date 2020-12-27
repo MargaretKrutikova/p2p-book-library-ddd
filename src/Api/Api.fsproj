@@ -18,7 +18,6 @@
     <Compile Include="BookListing/Models.fs" />
     <Compile Include="BookListing/ApiHandlers.fs" />
     <Compile Include="BookListing/RemotingHandlers.fs" />
-    <Compile Include="BookListing/HttpHandlers.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

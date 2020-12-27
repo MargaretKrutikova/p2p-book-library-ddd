@@ -4,10 +4,8 @@ open System
 
 module Errors =
   type ValidationError = 
-    | TitleIsEmpty
-    | TitleTooLong
-    | AuthorTooLong
-    | AuthorIsEmpty
+    | TitleInvalid
+    | AuthorInvalid
     | UserNotFound
     | BookListingNotFound
     
@@ -45,20 +43,16 @@ module Types =
     open Errors
     
     let create value: Result<Title, ValidationError> =
-      if String.IsNullOrWhiteSpace value then
-        Error TitleIsEmpty
-      elif value.Length > 200 then
-        Error TitleTooLong
+      if String.IsNullOrWhiteSpace value || value.Length > 200 then
+        Error TitleInvalid
       else value |> Title |> Ok
 
   module Author =
     open Errors
 
     let create value: Result<Author, ValidationError> =
-      if String.IsNullOrWhiteSpace value then
-        Error AuthorIsEmpty
-      elif value.Length > 100 then
-        Error AuthorTooLong
+      if String.IsNullOrWhiteSpace value || value.Length > 100 then
+        Error AuthorInvalid
       else value |> Author |> Ok
 
 module Messages =
@@ -86,17 +80,20 @@ module Messages =
     Name: string
   }
 
+  [<RequireQualifiedAccess>]
   type Command =
     | RegisterUser of RegisterUserArgs 
     | PublishBookListing of PublishBookListingArgs
     | RequestToBorrowBook of RequestToBorrowBookArgs
     | BorrowBook of BorrowBookArgs
 
+  [<RequireQualifiedAccess>]
   type Event =
     | BookListingPublished of ListingId
     | RequestedToBorrowBook of ListingId * UserId
     | BorrowedBook of ListingId * UserId
 
+  [<RequireQualifiedAccess>]
   type Query =
     | GetAllPublishedBookListings
     | GetUsersPublishedBookListings of UserId

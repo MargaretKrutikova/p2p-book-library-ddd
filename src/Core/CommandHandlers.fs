@@ -1,10 +1,10 @@
 module Core.Handlers.CommandHandlers
 
 open System.Threading.Tasks
+open Core.Domain.Messages
 open FsToolkit.ErrorHandling.TaskResultCE
 
 open Core.Domain.Errors
-open Core.Domain.Messages
 open Core.Domain.Types
 
 type CommandResult = Task<Result<unit, AppError>>
@@ -68,6 +68,6 @@ let registerUser: RegisterUser =
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->
     match command with
-    | RegisterUser args -> registerUser persistence.CreateUser args
-    | PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
+    | Command.RegisterUser args -> registerUser persistence.CreateUser args
+    | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
     | _ -> failwith ""

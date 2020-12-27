@@ -1,10 +1,16 @@
 namespace Api.BookListing.Models
 
 open System
+open Core.Domain.Errors
 
 [<CLIMutable>]
-type UserCreateInputModel = {
+type UserRegisterInputModel = {
     Name: string
+}
+
+[<CLIMutable>]
+type UserRegisteredOutputModel = {
+    Id: Guid
 }
 
 [<CLIMutable>]
@@ -19,45 +25,40 @@ type UserOutputModel = {
 }
 
 [<CLIMutable>]
-type UserCreatedOutputModel = {
-    Id: Guid
-}
-
-[<CLIMutable>]
-type ListingCreateInputModel = {
+type ListingPublishInputModel = {
     UserId: Guid
     Author: string
     Title: string
 }
 
 [<CLIMutable>]
-type ListingCreatedOutputModel = {
+type ListingPublishedOutputModel = {
     Id: Guid
 }
 
 [<CLIMutable>]
-type ListingOutputModel = {
+type UserListingOutputModel = {
     Id: Guid
-    UserId: Guid
     Author: string
     Title: string
 }
 
-type ApiError = 
-    | UserNotFound
-    | ListingNotFound
+type ApiQueryError =
     | InternalError
 
-type ApiResponse<'a> = Result<'a, ApiError>
+type UserLoginError =
+    | FailedToLogin
+
+type ApiCommandResponse<'a> = Result<'a, AppError>
 
 type IUserApi = {
-    create: UserCreateInputModel -> Async<ApiResponse<UserCreatedOutputModel>>
-    login: UserLoginInputModel -> Async<ApiResponse<UserOutputModel>>
+    register: UserRegisterInputModel -> Async<ApiCommandResponse<UserRegisteredOutputModel>>
+    login: UserLoginInputModel -> Async<Result<UserOutputModel, UserLoginError>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
-    create: ListingCreateInputModel -> Async<ApiResponse<ListingCreatedOutputModel>>
-    getByUserId: Guid -> Async<ApiResponse<ListingOutputModel list>>
+    publish: ListingPublishInputModel -> Async<ApiCommandResponse<ListingPublishedOutputModel>>
+    getByUserId: Guid -> Async<Result<UserListingOutputModel list, ApiQueryError>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

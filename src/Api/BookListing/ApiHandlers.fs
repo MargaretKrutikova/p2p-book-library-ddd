@@ -3,63 +3,70 @@ module Api.BookListing.ApiHandlers
 open Api.CompositionRoot
 open Api.BookListing.Models
 
-open Core.Common.SimpleTypes
-open Core.Common.Persistence
-open Core.Domain
-open FsToolkit.ErrorHandling.TaskResultCE
+open Core.Domain.Messages
+open Core.Domain.Types
+open Core.Handlers
+
+open Core.Handlers.QueryHandlers
+open FsToolkit.ErrorHandling
 open System
 
-let private toListingOutputModel (listing: Queries.ListingReadModel) =
+let private toUserListingOutputModel (listing: QueryHandlers.UserBookListingDto): UserListingOutputModel =
     {
         Id = ListingId.value listing.ListingId
-        UserId = UserId.value listing.UserId
         Author = listing.Author
         Title = listing.Title
     }
 
-let private toPublishBookListingArgs (listingId: Guid) (listingModel: ListingCreateInputModel): Messages.PublishBookListingArgs = {
+let private toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPublishInputModel): PublishBookListingArgs = {
     NewListingId = ListingId.create listingId
     UserId = UserId.create listingModel.UserId 
     Title = listingModel.Title
     Author = listingModel.Author
 }
 
-let private toRegisterUserArgs (userId: Guid) (inputModel: UserCreateInputModel): Messages.RegisterUserArgs = {
+let private toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs = {
     UserId = UserId.create userId
     Name = inputModel.Name
 }
 
-let createUser (root: CompositionRoot) (userModel: UserCreateInputModel) =
+let private fromQueryError (queryError: QueryError): ApiQueryError =
+    match queryError with
+    | ConnectionError -> InternalError
+
+let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
         let userId = Guid.NewGuid ()
-        let command = toRegisterUserArgs userId userModel |> Messages.RegisterUser
+        let command = toRegisterUserArgs userId userModel |> Command.RegisterUser
         do! root.CommandHandler command
         
-        let response: UserCreatedOutputModel = { Id = userId }
+        let response: UserRegisteredOutputModel = { Id = userId }
         return response
   }
 
-let createListing (root: CompositionRoot) (listingModel: ListingCreateInputModel) =
+let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputModel) =
   taskResult {
       let listingId = Guid.NewGuid ()
-      let command = toPublishBookListingArgs listingId listingModel |> Messages.PublishBookListing  
+      let command = toPublishBookListingArgs listingId listingModel |> Command.PublishBookListing  
       do! root.CommandHandler command
 
-      let response: ListingCreatedOutputModel = { Id = listingId }
+      let response: ListingPublishedOutputModel = { Id = listingId }
       return response
   }
 
 let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
     taskResult {
-        let! user = root.GetUserByName userModel.Name
+        let! userOption = root.GetUserByName userModel.Name |> TaskResult.mapError (fun _ -> FailedToLogin)
+        let! user = userOption |> Result.requireSome FailedToLogin
+        
         let response: UserOutputModel = { UserId = user.Id |> UserId.value; Name = user.Name }
         return response
   } 
 
 let getUserListings (root: CompositionRoot) (userId: Guid) =
       taskResult {
-        let! listings = UserId.create userId |> root.GetUserListings 
+        let! listings = UserId.create userId |> root.GetUserBookListings |> TaskResult.mapError fromQueryError
         return listings
-            |> Seq.map toListingOutputModel
+            |> Seq.map toUserListingOutputModel
             |> Seq.toList
       }
