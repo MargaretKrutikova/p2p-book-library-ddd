@@ -1,11 +1,11 @@
 open System
+open Core.Domain.Types
 open Npgsql
-open Core.BookListing
-open InMemoryPersistence
+open FsToolkit.ErrorHandling
 
 let createUser (dbConnection) =
     let id = Guid.NewGuid()
-    Persistence.Database.Commands.createUser dbConnection { Name = "Jogn"; Id = id }
+    Persistence.Database.CommandPersistenceImpl.createUser dbConnection { Name = "Jogn"; UserId = UserId.create id }
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
@@ -14,13 +14,14 @@ let createUser (dbConnection) =
 
 let createListing (dbConnection) userId =
     let id = Guid.NewGuid()
-    let listing: Persistence.Database.Commands.CreateListingModel = {
-        Id = id
-        Author = "Test"
-        Title = "Test title"
+    let listing: BookListing = {
+        ListingId = ListingId.create id
+        Author = Author.create "Test" |> Result.defaultWith (fun _ -> failwith "")
+        Title = Title.create "Test title" |> Result.defaultWith (fun _ -> failwith "")
         UserId = userId
+        Status = Available
     }
-    Persistence.Database.Commands.createListing dbConnection listing
+    Persistence.Database.CommandPersistenceImpl.createListing dbConnection listing
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
@@ -29,38 +30,17 @@ let createListing (dbConnection) userId =
 
 let testDb () = 
     let connectionString : string = ""
-        
     let dbConnection = new NpgsqlConnection (connectionString)
     
     let userId = createUser dbConnection
-    let listingId = createListing dbConnection userId
+    let _ = createListing dbConnection (userId |> UserId.create)
     
-    Persistence.Database.Queries.getUserListings dbConnection userId
+    Persistence.Database.QueryPersistenceImpl.getListingsByUserId dbConnection (userId |> UserId.create)
         |> Async.AwaitTask
         |> Async.RunSynchronously 
         |> printfn "%A"
 
-let createListingCommandData (userId: Guid): Domain.Commands.CreateBookListing =
-    {
-        BookListing = { 
-            NewListingId = Guid.NewGuid ()
-            UserId = userId
-            Title = "Test title"
-            Author= "Test author"
-        }
-        Timestamp = DateTime.Now
-    }
 
 [<EntryPoint>]
 let main (_) =
-    let persistence = new InMemoryPersistence()
-    let result =
-        createListingCommandData (Guid.NewGuid())
-        |> Domain.Commands.CreateBookListing
-        |> CommandHandler.commandHandler persistence
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-    
-    printfn "%A" result
-    
     0 // return an integer exit code
