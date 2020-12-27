@@ -9,9 +9,6 @@
 
     <Compile Include="CommandHandlers.fs" />
     <Compile Include="QueryHandlers.fs" />
-    <Compile Include="BookListing/BookListing.Implementation.fs" />
-    <Compile Include="BookListing/BookListing.Service.fs" />
-    <Compile Include="Users/User.Service.fs" />
   </ItemGroup>
 
   <ItemGroup>

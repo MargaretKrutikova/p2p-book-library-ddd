@@ -32,7 +32,7 @@ let private toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputMode
 
 let private fromQueryError (queryError: QueryError): ApiQueryError =
     match queryError with
-    | ConnectionError -> InternalError
+    | InternalError -> ApiQueryError.InternalError
 
 let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {

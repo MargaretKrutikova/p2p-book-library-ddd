@@ -1,6 +1,7 @@
 namespace Core.Domain
 
 open System
+open FsToolkit.ErrorHandling.ResultCE
 
 module Errors =
   type ValidationError = 
@@ -10,12 +11,13 @@ module Errors =
     | BookListingNotFound
     
   type DomainError =
-    | CantRequestBorrow
+    | NotEligibleToBorrow
     | CantBorrowBeforeRequestIsApproved
 
   type AppError =
     | Validation of ValidationError
     | Domain of DomainError
+    | ServiceError
 
 module Types =
   type UserId = private UserId of Guid
@@ -23,6 +25,12 @@ module Types =
   type Title = private Title of string
   type Author = private Author of string
   type ListingStatus = Available | RequestedToBorrow | Borrowed
+  // TODO: use smart constructor
+  type UserName = string
+  type User = {
+    UserId: UserId
+    Name: UserName
+  }
   type BookListing = {
     ListingId: ListingId
     UserId: UserId
@@ -99,3 +107,23 @@ module Messages =
   type Query =
     | GetAllPublishedBookListings
     | GetUsersPublishedBookListings of UserId
+
+module Logic =
+  open Errors
+  open Types
+  
+  let publishBookListing (dto: Messages.PublishBookListingArgs): Result<BookListing, AppError> =
+    result {
+      let! title = Title.create dto.Title |> Result.mapError Validation
+      let! author = Author.create dto.Author |> Result.mapError Validation
+
+      let bookListing: BookListing = {
+        ListingId = dto.NewListingId
+        UserId = dto.UserId
+        Author = author
+        Title = title
+        Status = Available
+      }
+
+      return bookListing
+    }

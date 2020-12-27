@@ -2,11 +2,12 @@ module Core.Handlers.QueryHandlers
 
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling.TaskResultCE
+open FsToolkit.ErrorHandling
 
 open Core.Domain.Types
 
 type QueryError =
-   | ConnectionError   
+   | InternalError   
 
 type QueryResult<'a> = Task<Result<'a, QueryError>>
 
@@ -59,7 +60,4 @@ let getUserBookListings (getListingsByUserId: QueryPersistenceOperations.GetList
     
 type GetUserByName = string -> QueryResult<UserDto option>
 let getUserByName (getUser: QueryPersistenceOperations.GetUserByName): GetUserByName =
-   fun getListingsByUserId ->
-    taskResult {
-       return None
-    }
+   fun userName -> getUser userName |> TaskResult.mapError (fun _ -> InternalError)

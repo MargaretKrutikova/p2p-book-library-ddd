@@ -1,8 +1,10 @@
 module Core.Handlers.CommandHandlers
 
 open System.Threading.Tasks
+open Core.Domain
 open Core.Domain.Messages
 open FsToolkit.ErrorHandling.TaskResultCE
+open FsToolkit.ErrorHandling
 
 open Core.Domain.Errors
 open Core.Domain.Types
@@ -15,25 +17,17 @@ module CommandPersistenceOperations =
     | MissingRecord
 
   type DbResult<'a> = Task<Result<'a, DbReadError>>
-
   type UserReadModel = {
     Id: UserId
     Name: string
   }
-
   type GetUserById = UserId -> DbResult<UserReadModel>
 
   type DbWriteError =
     | WriteError
 
   type DbWriteResult = Task<Result<unit, DbWriteError>>
-
-  type UserCreateModel = {
-    UserId: UserId
-    Name: string
-  }
-
-  type CreateUser = UserCreateModel -> DbWriteResult
+  type CreateUser = User -> DbWriteResult
   type CreateListing = BookListing -> DbWriteResult
   type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
 
@@ -43,18 +37,30 @@ type CommandPersistenceOperations = {
   CreateUser: CommandPersistenceOperations.CreateUser
 }
 
+let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserById) userId: Task<Result<unit, AppError>> =
+  getUserById userId 
+  |> TaskResult.mapError (function | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
+  |> TaskResult.ignore
+
 type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
 let publishBookListing: PublishBookListing =
     fun getUserById createListing args ->
     taskResult {
-      return ()
+      do! checkUserExists getUserById args.UserId
+
+      let! bookListing = Logic.publishBookListing args 
+      do! createListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
     }
 
 type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
 let registerUser: RegisterUser =
   fun createUser args ->
      taskResult {
-       return ()
+        let user: User = {
+          UserId = args.UserId
+          Name = args.Name
+        }
+        do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
      }
 
 //type RequestToBorrowBook =
