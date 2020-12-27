@@ -1,4 +1,4 @@
-namespace Api.BookListing.Models
+namespace Api.Models
 
 open System
 open Core.Domain.Errors

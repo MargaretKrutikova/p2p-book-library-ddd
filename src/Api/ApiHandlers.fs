@@ -1,7 +1,7 @@
-module Api.BookListing.ApiHandlers
+module Api.ApiHandlers
 
 open Api.CompositionRoot
-open Api.BookListing.Models
+open Api.Models
 
 open Core.Domain.Messages
 open Core.Domain.Types

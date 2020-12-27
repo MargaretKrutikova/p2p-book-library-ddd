@@ -1,7 +1,7 @@
 module Api.BookListing.RemotingHandlers
 
-open Api.BookListing.Models
-open Api.BookListing.ApiHandlers
+open Api.Models
+open Api.ApiHandlers
 open Api.CompositionRoot
 
 open Microsoft.AspNetCore.Http

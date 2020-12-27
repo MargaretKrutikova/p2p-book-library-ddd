@@ -1,99 +1,85 @@
 module Api.InMemoryPersistence
 
-open System
-open Core.Common.Persistence
-
 open System.Threading.Tasks
+open Core.Domain.Types
+open Core.Handlers.CommandHandlers
+open Core.Handlers.QueryHandlers
 open FsToolkit.ErrorHandling
 
-// TODO: split into several and move into core layer
-type Persistence = {
-  GetUserListings: Queries.GetUserListings
-  GetUserById: Queries.GetUserById
-  GetUserByName: Queries.GetUserByName
-  GetListingById: Queries.GetListingById
-  CreateListing: Commands.CreateListing
-  UpdateListing: Commands.UpdateListing
-  CreateUser: Commands.CreateUser
-}
-
 module InMemoryPersistence =
-  let create (): Persistence =
-    let mutable users: Queries.UserReadModel list = List.empty
-    let mutable listings: Queries.ListingReadModel list = List.empty
+  let private toUserBookListingDto (listing: BookListing): UserBookListingDto = {
+      ListingId = listing.ListingId
+      Author = listing.Author |> Author.value
+      Title = listing.Title |> Title.value
+      Status = listing.Status
+  }
+  
+  let create (): (CommandPersistenceOperations * QueryPersistenceOperations) =
+    let mutable users: UserDto list = List.empty
+    let mutable listings: BookListing list = List.empty
 
-    let getUserListings: Queries.GetUserListings =
+    let getListingByUserId: QueryPersistenceOperations.GetListingsByUserId =
       fun userId ->
         listings 
         |> Seq.filter (fun listing -> listing.UserId = userId)
+        |> Seq.map toUserBookListingDto
         |> Ok
         |> Task.FromResult 
 
-    let getUserById: Queries.GetUserById =
-      fun userId ->
-        users 
-        |> Seq.filter (fun user -> user.Id = userId)
-        |> Seq.tryHead
-        |> Result.requireSome Queries.MissingRecord
-        |> Task.FromResult
-
-    let getUserByName: Queries.GetUserByName =
+    let getUserByName: QueryPersistenceOperations.GetUserByName =
       fun userName ->
         users 
         |> Seq.filter (fun user -> user.Name = userName)
         |> Seq.tryHead
-        |> Result.requireSome Queries.MissingRecord
+        |> Result.Ok
         |> Task.FromResult
     
-    let getListingById: Queries.GetListingById =
-      fun listingId ->
-        listings 
-        |> Seq.filter (fun listing -> listing.ListingId = listingId)
+    let getUserById: CommandPersistenceOperations.GetUserById =
+      fun userId ->
+        users 
+        |> Seq.filter (fun user -> user.Id = userId)
         |> Seq.tryHead
-        |> Result.requireSome Queries.MissingRecord
+        |> Result.requireSome CommandPersistenceOperations.MissingRecord
+        |> Result.map (fun user -> { Id = user.Id; Name = user.Name }: CommandPersistenceOperations.UserReadModel)
         |> Task.FromResult
 
-    let createListing: Commands.CreateListing =
-      fun model ->
-        let listing: Queries.ListingReadModel = {
-          ListingId = model.ListingId 
-          UserId = model.UserId
-          Author = model.Author
-          Title = model.Title
-          Status = model.InitialStatus
-          PublishedDate = DateTime.UtcNow
-        }
+    let createListing: CommandPersistenceOperations.CreateListing =
+      fun listing ->
         listings <- listing::listings
         Task.FromResult (Ok ())
 
-    let createUser: Commands.CreateUser =
-        fun userDto ->
-          let user: Queries.UserReadModel = {
-            Id = userDto.UserId
-            Name = userDto.Name
+    let createUser: CommandPersistenceOperations.CreateUser =
+        fun userModel ->
+          let user: UserDto = {
+            Id = userModel.UserId
+            Name = userModel.Name
           }
           users <- user::users
           Task.FromResult (Ok())
 
-    let updateListing (listing: Commands.ListingUpdateModel) =
-      let updatedListings = 
-        listings 
-          |> Seq.map (fun l -> 
-            if l.ListingId = listing.ListingId then
-              { l with Status = listing.Status }
-            else l
-          ) 
-          |> Seq.toList
+    let updateListing: CommandPersistenceOperations.UpdateListingStatus =
+      fun  listingId status ->
+        let updatedListings = 
+          listings 
+            |> Seq.map (fun l -> 
+              if l.ListingId = listingId then
+                { l with Status = status }
+              else l
+            ) 
+            |> Seq.toList
 
-      listings <- updatedListings
-      Task.FromResult (Ok ())
+        listings <- updatedListings
+        Task.FromResult (Ok ())
 
-    {
-      GetUserListings = getUserListings
+    let commandOperations: CommandPersistenceOperations = {
       GetUserById = getUserById
-      GetListingById = getListingById
-      GetUserByName = getUserByName
       CreateListing = createListing
       CreateUser = createUser
-      UpdateListing = updateListing
     }
+    
+    let queryOperations: QueryPersistenceOperations = {
+      GetUserByName = getUserByName
+      GetListingsByUserId = getListingByUserId
+    }
+  
+    (commandOperations, queryOperations)

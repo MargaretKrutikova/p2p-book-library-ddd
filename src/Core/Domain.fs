@@ -46,6 +46,7 @@ module Types =
       if String.IsNullOrWhiteSpace value || value.Length > 200 then
         Error TitleInvalid
       else value |> Title |> Ok
+    let value ((Title str)) = str
 
   module Author =
     open Errors
@@ -54,6 +55,7 @@ module Types =
       if String.IsNullOrWhiteSpace value || value.Length > 100 then
         Error AuthorInvalid
       else value |> Author |> Ok
+    let value ((Author str)) = str
 
 module Messages =
   open Types
