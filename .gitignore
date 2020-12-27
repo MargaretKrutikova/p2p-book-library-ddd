@@ -261,3 +261,5 @@ MyProject_coverage.xml
 .ionide
 
 .fake
+
+POSTGRES.*
