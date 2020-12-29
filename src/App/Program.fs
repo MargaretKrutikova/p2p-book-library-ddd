@@ -5,7 +5,10 @@ open FsToolkit.ErrorHandling
 
 let createUser (dbConnection) =
     let id = Guid.NewGuid()
-    Persistence.Database.CommandPersistenceImpl.createUser dbConnection { Name = "Jogn"; UserId = UserId.create id }
+    Persistence.Database.CommandPersistenceImpl.createUser
+        dbConnection
+        { Name = "Jogn"
+          UserId = UserId.create id }
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
@@ -14,13 +17,18 @@ let createUser (dbConnection) =
 
 let createListing (dbConnection) userId =
     let id = Guid.NewGuid()
-    let listing: BookListing = {
-        ListingId = ListingId.create id
-        Author = Author.create "Test" |> Result.defaultWith (fun _ -> failwith "")
-        Title = Title.create "Test title" |> Result.defaultWith (fun _ -> failwith "")
-        UserId = userId
-        Status = Available
-    }
+
+    let listing: BookListing =
+        { ListingId = ListingId.create id
+          Author =
+              Author.create "Test"
+              |> Result.defaultWith (fun _ -> failwith "")
+          Title =
+              Title.create "Test title"
+              |> Result.defaultWith (fun _ -> failwith "")
+          UserId = userId
+          Status = Available }
+
     Persistence.Database.CommandPersistenceImpl.createListing dbConnection listing
     |> Async.AwaitTask
     |> Async.RunSynchronously
@@ -28,19 +36,19 @@ let createListing (dbConnection) userId =
 
     id
 
-let testDb () = 
-    let connectionString : string = ""
-    let dbConnection = new NpgsqlConnection (connectionString)
-    
-    let userId = createUser dbConnection
-    let _ = createListing dbConnection (userId |> UserId.create)
-    
-    Persistence.Database.QueryPersistenceImpl.getListingsByUserId dbConnection (userId |> UserId.create)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously 
-        |> printfn "%A"
+let testDb () =
+    let connectionString: string = ""
+    let dbConnection = new NpgsqlConnection(connectionString)
 
+    let userId = createUser dbConnection
+
+    let _ =
+        createListing dbConnection (userId |> UserId.create)
+
+    Persistence.Database.QueryPersistenceImpl.getListingsByUserId dbConnection (userId |> UserId.create)
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> printfn "%A"
 
 [<EntryPoint>]
-let main (_) =
-    0 // return an integer exit code
+let main (_) = 0 // return an integer exit code
