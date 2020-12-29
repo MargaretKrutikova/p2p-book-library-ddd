@@ -3,12 +3,14 @@ module Api.CompositionRoot
 open Api.Actors
 open Akka.Actor
 
+open Api.Email
 open Core.Domain
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
 
 open Akka.FSharp
 open FsToolkit.ErrorHandling.TaskResultCE
+open Microsoft.Extensions.Logging
     
 let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Messages.Command) =
     taskResult {
@@ -24,8 +26,8 @@ type CompositionRoot = {
     GetUserByName: GetUserByName
 }
 
-let compose (commandPersistence: CommandPersistenceOperations) (queryPersistence: QueryPersistenceOperations): CompositionRoot = 
-  let system = setupActors ()
+let compose (smtpConfig: SmtpConfiguration) (logger: ILogger) (commandPersistence: CommandPersistenceOperations) (queryPersistence: QueryPersistenceOperations): CompositionRoot = 
+  let system = setupActors smtpConfig logger
   let commandHandler = handleCommand commandPersistence |> commandHandlerWithPublish system 
   
   {

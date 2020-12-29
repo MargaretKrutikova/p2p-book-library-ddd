@@ -1,6 +1,7 @@
 module Api.App
 
 open System
+open Api.Email
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
@@ -41,9 +42,18 @@ let configureCors (builder : CorsPolicyBuilder) =
        .AllowAnyHeader()
        |> ignore
 
-let compose (): CompositionRoot.CompositionRoot =
+let compose (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
-    persistence ||> CompositionRoot.compose
+    
+    // TODO: use ConfigurationManager.AppSettings.
+    let smtpConfig: SmtpConfiguration = {
+        Server = ""
+        Sender = "app@app.com"
+        Password = ""
+        PickupDirectory = @"/"
+    }
+    
+    persistence ||> CompositionRoot.compose smtpConfig logger
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
@@ -60,7 +70,10 @@ let configureApp (app : IApplicationBuilder) =
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
-    services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
+    services.AddSingleton<CompositionRoot.CompositionRoot>
+        (fun container ->
+            let logger = container.GetRequiredService<ILogger<IStartup>>() // TODO: fix later
+            compose logger) |> ignore
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()

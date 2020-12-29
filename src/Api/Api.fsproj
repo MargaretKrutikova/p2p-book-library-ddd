@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="EmailSender.fs" />
     <Compile Include="Models.fs" />
     <Compile Include="Actors.fs" />
     <Compile Include="CompositionRoot.fs" />
