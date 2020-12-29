@@ -9,7 +9,7 @@ open FsToolkit.ErrorHandling
 open Core.Domain.Errors
 open Core.Domain.Types
 
-type CommandResult = Task<Result<unit, AppError>>
+type CommandResult = Task<Result<Messages.Event, AppError>>
 type CommandHandler = Command -> CommandResult
 
 module CommandPersistenceOperations = 
@@ -50,6 +50,8 @@ let publishBookListing: PublishBookListing =
 
       let! bookListing = Logic.publishBookListing args 
       do! createListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
+      
+      return Event.BookListingPublished args.NewListingId 
     }
 
 type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
@@ -61,6 +63,7 @@ let registerUser: RegisterUser =
           Name = args.Name
         }
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
+        return Event.UserRegistered args.UserId
      }
 
 //type RequestToBorrowBook =

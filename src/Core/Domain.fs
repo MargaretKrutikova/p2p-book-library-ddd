@@ -103,7 +103,8 @@ module Messages =
         | BookListingPublished of ListingId
         | RequestedToBorrowBook of ListingId * UserId
         | BorrowedBook of ListingId * UserId
-
+        | UserRegistered of UserId
+        
     [<RequireQualifiedAccess>]
     type Query =
         | GetAllPublishedBookListings
