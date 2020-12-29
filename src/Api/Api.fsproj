@@ -10,10 +10,13 @@
     <PackageReference Include="Fable.Remoting.Giraffe" Version="4.15.0" />
     <PackageReference Include="Giraffe" Version="4.1.0" />
     <PackageReference Include="Ply" Version="0.3.*" />
+    <PackageReference Include="akka" Version="1.4.13" />
+    <PackageReference Include="akka.fsharp" Version="1.4.13" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Models.fs" />
+    <Compile Include="Actors.fs" />
     <Compile Include="CompositionRoot.fs" />
     <Compile Include="ApiHandlers.fs" />
     <Compile Include="RemotingHandlers.fs" />
