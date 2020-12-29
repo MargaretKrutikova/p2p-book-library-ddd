@@ -1,13 +1,14 @@
 module Persistence.Database
+open Core.Domain.Types
+open Core.Handlers.CommandHandlers
+open Core.Handlers.QueryHandlers
 
 open System
 open System.Data
-open Core.Common.Persistence
+open FsToolkit.ErrorHandling
 
 open Dapper.FSharp
 open Dapper.FSharp.PostgreSQL
-open FsToolkit.ErrorHandling.TaskResultCE
-open FsToolkit.ErrorHandling
 
 module Tables =
   module Listings =
@@ -16,7 +17,7 @@ module Tables =
   type ListingStatus =
     | Available = 0
     | Borrowed = 1
-    | Unpublished = 2
+    | RequestedToBorrow = 2
 
   [<CLIMutable>]
   type Listings = {
@@ -50,72 +51,102 @@ module Tables =
     entry_type: int
   }
 
-module Commands =
-  type CreateListingModel = {
-    Id: Guid
-    UserId: Guid
-    Title : string
-    Author : string
-  }
+module Conversions =
+    let toDbListingStatus (status: ListingStatus): Tables.ListingStatus =
+      match status with
+      | Available -> Tables.ListingStatus.Available
+      | Borrowed -> Tables.ListingStatus.Borrowed
+      | RequestedToBorrow -> Tables.ListingStatus.RequestedToBorrow
+    
+    let fromDbListingStatus (status: Tables.ListingStatus): ListingStatus =
+      match status with
+      | Tables.ListingStatus.Available -> Available
+      | Tables.ListingStatus.Borrowed -> Borrowed
+      | Tables.ListingStatus.RequestedToBorrow -> RequestedToBorrow
+      | _ -> failwith "Unknown listing status"
+    
+    let toDbListing (listing: BookListing): Tables.Listings =
+      {
+         id = listing.ListingId |> ListingId.value
+         user_id = listing.UserId |> UserId.value
+         author = listing.Author |> Author.value
+         title = listing.Title |> Title.value
+         status = toDbListingStatus listing.Status
+         published_date = DateTime.UtcNow // TODO: pass in somehow
+      }
+      
+    let toDbUser (user: User): Tables.Users =
+      {
+        id = user.UserId |> UserId.value
+        name = user.Name
+      }
+    
+    let toUserReadModel (dbUser: Tables.Users): CommandPersistenceOperations.UserReadModel =
+      {
+        Id = UserId.create dbUser.id
+        Name = dbUser.name
+      }
+    
+module CommandPersistenceImpl =
+  open CommandPersistenceOperations
 
-  type CreateUserModel = {
-    Id: Guid
-    Name: string
-  }
+  let createUser (dbConnection: IDbConnection): CreateUser =
+    fun user ->
+      insert<Tables.Users> {
+        table Tables.Users.tableName
+        value (Conversions.toDbUser user)
+      }
+      |> dbConnection.InsertAsync
+      |> Task.map (fun _ -> Ok ()) // TODO: proper error handling
 
-  // TODO: should take in domain model
-  let private fromCreateLisingModel (model: CreateListingModel): Tables.Listings =
-    {
-       id = model.Id
-       user_id = model.UserId
-       author = model.Author
-       title = model.Title
-       status = Tables.ListingStatus.Available
-       published_date = DateTime.UtcNow
-    }
-
-  let createUser (dbConnection: IDbConnection) (model: CreateUserModel) =
-    insert<Tables.Users> {
-      table Tables.Users.tableName
-      value { id = model.Id; name = model.Name }
-    } |> dbConnection.InsertAsync
-
-  let createListing (dbConnection: IDbConnection) (model: CreateListingModel) =
-    insert<Tables.Listings> {
-      table Tables.Listings.tableName
-      value (fromCreateLisingModel model)
-    } |> dbConnection.InsertAsync
-
-module Queries =
-  open Core.Common.SimpleTypes
-  open Core.BookListing
-
-  let private toListingStatus status =
-    match status with
-    | Tables.ListingStatus.Available -> Available
-    | Tables.ListingStatus.Borrowed -> Borrowed
-    | _ -> failwith "Unknown listing status"
-
-  let private toListingReadModel (listing: Tables.Listings): Queries.ListingReadModel = {
+  let createListing (dbConnection: IDbConnection): CreateListing =
+    fun model ->
+      insert<Tables.Listings> {
+        table Tables.Listings.tableName
+        value (Conversions.toDbListing model)
+      }
+      |> dbConnection.InsertAsync
+      |> Task.map (fun _ -> Ok ()) // TODO: proper error handling
+  
+  let getUserById (dbConnection: IDbConnection): GetUserById =
+    fun userId ->
+        select {
+            table Tables.Users.tableName
+            where (eq "id" (userId |> UserId.value))
+        } 
+        |> dbConnection.SelectAsync<Tables.Users>
+        |> Task.map (Seq.head >> Conversions.toUserReadModel >> Ok) // TODO: handle missing user
+        
+module QueryPersistenceImpl =
+  open QueryPersistenceOperations
+  
+  let private toUserBookListingDto (listing: Tables.Listings): UserBookListingDto = {
     ListingId = ListingId.create listing.id
-    UserId = UserId.create listing.user_id
     Author = listing.author
     Title = listing.title
-    Status = toListingStatus listing.status 
-    PublishedDate = listing.published_date
+    Status = Conversions.fromDbListingStatus listing.status 
   }
 
-  let getUserListings (dbConnection: IDbConnection) (userId: Guid) =
-    select {
-        table Tables.Listings.tableName
-        where (eq "user_id" userId)
-    } |> dbConnection.SelectAsync<Tables.Listings>
-
-  let getListingById (dbConnection: IDbConnection): Queries.GetUserListings =
-    fun listingId ->
+  let private toUserDto (dbUser: Tables.Users): UserDto =
+      {
+        Id = UserId.create dbUser.id
+        Name = dbUser.name
+      }
+  
+  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByUserId =
+    fun userId ->
       select {
           table Tables.Listings.tableName
-          where (eq "id" listingId)
-      } 
+          where (eq "user_id" (userId |> UserId.value))
+      }
       |> dbConnection.SelectAsync<Tables.Listings>
-      |> Task.map (Seq.map toListingReadModel >> Ok)
+      |> Task.map (Seq.map toUserBookListingDto >> Ok)
+
+  let getUserByName (dbConnection: IDbConnection): GetUserByName =
+    fun userName ->
+      select {
+          table Tables.Users.tableName
+          where (eq "name" userName)
+      } 
+      |> dbConnection.SelectAsync<Tables.Users>
+      |> Task.map (Seq.tryHead >> Option.map toUserDto >> Ok)

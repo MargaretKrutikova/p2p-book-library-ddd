@@ -16,23 +16,7 @@ open Api.BookListing.RemotingHandlers
 // Web app
 // ---------------------------------
 
-// let webApp =
-//     choose [
-//         subRoute "/api"
-//             (choose [
-//                 GET >=> choose [
-//                     routef "/listings/%s" BookListing.HttpHandlers.handleGetListings
-//                 ]
-//                 POST >=> choose [
-//                     route "/users" >=> BookListing.HttpHandlers.handleCreateUser
-//                 ]
-//                 POST >=> choose [
-//                     routef "/users/%s/listings" BookListing.HttpHandlers.handleCreateListing
-//                 ]
-//             ])
-//         setStatusCode 404 >=> text "Not Found" ]
-
-let webApp (root:CompositionRoot.CompositionRoot) =
+let webApp () =
     choose [
         createUserApiHandler ()
         createBookListingApiHandler () 
@@ -59,11 +43,10 @@ let configureCors (builder : CorsPolicyBuilder) =
 
 let compose (): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
-    CompositionRoot.compose persistence
+    persistence ||> CompositionRoot.compose
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
-    let root = compose ()
     (match env.IsDevelopment() with
     | true  ->
         app.UseDeveloperExceptionPage()
@@ -72,7 +55,7 @@ let configureApp (app : IApplicationBuilder) =
             //.UseHttpsRedirection()
             )
         .UseCors(configureCors)
-        .UseGiraffe(webApp root)
+        .UseGiraffe(webApp ())
 
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore

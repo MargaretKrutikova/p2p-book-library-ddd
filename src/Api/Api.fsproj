@@ -13,12 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="InMemoryPersistence.fs" />
+    <Compile Include="Models.fs" />
     <Compile Include="CompositionRoot.fs" />
-    <Compile Include="BookListing/Models.fs" />
-    <Compile Include="BookListing/ApiHandlers.fs" />
-    <Compile Include="BookListing/RemotingHandlers.fs" />
-    <Compile Include="BookListing/HttpHandlers.fs" />
+    <Compile Include="ApiHandlers.fs" />
+    <Compile Include="RemotingHandlers.fs" />
+    <Compile Include="InMemoryPersistence.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

@@ -1,24 +1,19 @@
 module Api.CompositionRoot
 
-open Core.BookListing.Service
-open Core.Users.Service
-
-open InMemoryPersistence
+open Core.Handlers.CommandHandlers
+open Core.Handlers.QueryHandlers
 
 type CompositionRoot = {
-  CreateListing: CreateBookListing.Composed
-  RequestToBorrowBook: RequestToBorrowBook.Composed
-  GetUserListings: GetUserListings.Composed
-  CreateUser: CreateUser.Composed
-  GetUserByName: GetUserByName.Composed
+    CommandHandler: CommandHandler
+    // GetAllPublishedListings: GetAllPublishedBookListings
+    GetUserBookListings: GetUserBookListings
+    GetUserByName: GetUserByName
 }
 
-let compose (persistence: Persistence): CompositionRoot = 
+let compose (commandPersistence: CommandPersistenceOperations) (queryPersistence: QueryPersistenceOperations): CompositionRoot = 
   {
-    CreateListing = CreateBookListing.execute persistence.GetUserById persistence.CreateListing
-    CreateUser = CreateUser.execute persistence.CreateUser
-    GetUserListings = GetUserListings.run persistence.GetUserById persistence.GetUserListings
-    GetUserByName = GetUserByName.run persistence.GetUserByName  
-    RequestToBorrowBook =
-      RequestToBorrowBook.execute persistence.GetUserById persistence.GetListingById persistence.UpdateListing
+      CommandHandler = handleCommand commandPersistence
+      // GetAllPublishedListings = getAllPublishedBookListings queryPersistence.GetAllListings
+      GetUserBookListings = getUserBookListings queryPersistence.GetListingsByUserId
+      GetUserByName = getUserByName queryPersistence.GetUserByName
   }

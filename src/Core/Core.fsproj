@@ -5,13 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Common/SimpleTypes.fs" />
-    <Compile Include="Common/Persistence.fs" />
+    <Compile Include="Domain.fs" />
 
-    <Compile Include="BookListing/BookListing.Domain.fs" />
-    <Compile Include="BookListing/BookListing.Implementation.fs" />
-    <Compile Include="BookListing/BookListing.Service.fs" />
-    <Compile Include="Users/User.Service.fs" />
+    <Compile Include="CommandHandlers.fs" />
+    <Compile Include="QueryHandlers.fs" />
   </ItemGroup>
 
   <ItemGroup>

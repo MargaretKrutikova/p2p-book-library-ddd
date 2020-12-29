@@ -1,7 +1,7 @@
 module Client.App
 
 open System
-open Api.BookListing.Models
+open Api.Models
 open Client.Pages
 open Elmish
 open Elmish.React
