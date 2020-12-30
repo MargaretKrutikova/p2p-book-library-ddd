@@ -31,7 +31,18 @@ module Types =
         | Borrowed
     // TODO: use smart constructor
     type UserName = string
-    type User = { UserId: UserId; Name: UserName }
+    type Email = string
+    
+    type UserSettings = {
+        IsSubscribedToUserListingActivity: bool
+    }
+        
+    type User = {
+        UserId: UserId
+        Name: UserName
+        Email: Email
+        UserSettings: UserSettings
+    }
 
     type BookListing =
         { ListingId: ListingId
@@ -89,7 +100,12 @@ module Messages =
         { ListingId: ListingId
           BorrowerId: UserId }
 
-    type RegisterUserArgs = { UserId: UserId; Name: string }
+    type RegisterUserArgs = {
+        UserId: UserId
+        Name: string
+        Email: string
+        IsSubscribedToUserListingActivity: bool
+    }
 
     [<RequireQualifiedAccess>]
     type Command =
@@ -101,9 +117,9 @@ module Messages =
     [<RequireQualifiedAccess>]
     type Event =
         | BookListingPublished of ListingId
-        | RequestedToBorrowBook of ListingId * UserId
-        | BorrowedBook of ListingId * UserId
-        | UserRegistered of UserId
+        | RequestedToBorrowBook of ListingId * BorrowerId: UserId
+        | BorrowedBook of ListingId * BorrowerId: UserId
+        | UserRegistered of RegisterUserArgs
         
     [<RequireQualifiedAccess>]
     type Query =

@@ -6,6 +6,8 @@ open Core.Domain.Errors
 [<CLIMutable>]
 type UserRegisterInputModel = {
     Name: string
+    Email: string
+    IsSubscribedToUserListingActivity: bool
 }
 
 [<CLIMutable>]

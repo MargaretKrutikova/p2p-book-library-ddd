@@ -61,9 +61,13 @@ let registerUser: RegisterUser =
         let user: User = {
           UserId = args.UserId
           Name = args.Name
+          Email = args.Email // TODO: validate
+          UserSettings = {
+            IsSubscribedToUserListingActivity = args.IsSubscribedToUserListingActivity
+          }
         }
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
-        return Event.UserRegistered args.UserId
+        return Event.UserRegistered args
      }
 
 //type RequestToBorrowBook =

@@ -7,8 +7,10 @@ let createUser (dbConnection) =
     let id = Guid.NewGuid()
     Persistence.Database.CommandPersistenceImpl.createUser
         dbConnection
-        { Name = "Jogn"
-          UserId = UserId.create id }
+        { Name = "John"
+          UserId = UserId.create id
+          Email = ""
+          UserSettings = { IsSubscribedToUserListingActivity = true } }
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore

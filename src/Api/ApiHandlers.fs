@@ -25,7 +25,9 @@ let private toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPub
 
 let private toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs =
     { UserId = UserId.create userId
-      Name = inputModel.Name }
+      Name = inputModel.Name
+      Email = inputModel.Email
+      IsSubscribedToUserListingActivity = inputModel.IsSubscribedToUserListingActivity }
 
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
