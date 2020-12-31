@@ -1,13 +1,8 @@
 module Api.Actors.EmailSenderActor
 
 open Akka.FSharp
+open Api.Email
 open Core.Domain.Types
-
-type SendEmailData = {
-    Email: string
-    Topic: string
-    Body: string
-}
 
 type SendEmail = SendEmailData -> Async<Result<unit, string>>
 
@@ -37,6 +32,14 @@ and RegisteredUserInfo = {
     Email: string
 }
 
+// TODO: read from some config
+let createBookRequestedToBorrowEmailBody (info: BookRequestedToBorrowInfo) =
+    sprintf "Dear %s! %s wants to borrow %s, %s. Please take action :)"
+        info.Owner.Name
+        info.Borrower.Name
+        info.BookInfo.Title
+        info.BookInfo.Author
+
 let handleEmailSenderMessage (sendEmail: SendEmail) (_: Actor<EmailSenderMessage>) (message: EmailSenderMessage) =
    match message with
    | SendRegistrationEmail info ->
@@ -46,4 +49,11 @@ let handleEmailSenderMessage (sendEmail: SendEmail) (_: Actor<EmailSenderMessage
            Body = "Tja"
        }
        sendEmail data |> ignore // TODO: handle
+   | SendBookRequestedToBorrow info ->
+       let data = {
+           Email = info.Owner.Email
+           Topic = "Borrow book request"
+           Body = createBookRequestedToBorrowEmailBody info
+       }
+       sendEmail data |> ignore
    | _ -> ()

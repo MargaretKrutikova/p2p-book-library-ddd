@@ -47,12 +47,13 @@ let compose (logger): CompositionRoot.CompositionRoot =
     
     // TODO: use ConfigurationManager.AppSettings.
     let smtpConfig: SmtpConfiguration = {
-        Server = ""
-        Sender = "app@app.com"
-        Password = ""
-        PickupDirectory = @"/"
-    }
-    
+        SmtpServer = ""
+        SmtpPassword = ""
+        SmtpUsername = ""
+        SenderEmail = "app@app.com"
+        SenderName = "app"
+        Port = 587 }
+
     persistence ||> CompositionRoot.compose smtpConfig logger
 
 let configureApp (app : IApplicationBuilder) =
