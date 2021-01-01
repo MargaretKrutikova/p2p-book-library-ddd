@@ -47,7 +47,7 @@ let configureCors (builder : CorsPolicyBuilder) =
 let compose (configuration: IConfiguration) (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
     
-    let smtpConfigJson = configuration.GetSection("SmtpConfig")
+    let smtpConfigJson = configuration.GetSection("SmtpConfiguration")
     let smtpConfig: SmtpConfiguration = {
         SmtpServer = smtpConfigJson.GetValue("SmtpServer")
         SmtpPassword = smtpConfigJson.GetValue("SmtpPassword")
