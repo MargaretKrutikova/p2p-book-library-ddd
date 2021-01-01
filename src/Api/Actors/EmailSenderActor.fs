@@ -4,15 +4,15 @@ open Akka.FSharp
 open Api.Email
 open Core.Domain.Types
 
-type SendEmail = SendEmailData -> Async<Result<unit, string>>
+type SendEmail = SendEmailData -> SendEmailResult
 
-type UserInfoDto = {
+type UserEmailInfoDto = {
     Name: string
     Email: string
     IsSubscribedToUserListingActivity: bool
 }
 
-type BookListingInfoDto = {
+type BookListingEmailInfoDto = {
     OwnerId: UserId
     Title: string
     Author: string
@@ -23,9 +23,9 @@ type EmailSenderMessage =
     | SendBookRequestedToBorrow of BookRequestedToBorrowInfo
     | SendBookRequestApproved
 and BookRequestedToBorrowInfo = {
-    Owner: UserInfoDto
-    Borrower: UserInfoDto 
-    BookInfo : BookListingInfoDto
+    Owner: UserEmailInfoDto
+    Borrower: UserEmailInfoDto 
+    BookInfo : BookListingEmailInfoDto
 }
 and RegisteredUserInfo = {
     Name: string
@@ -48,12 +48,12 @@ let handleEmailSenderMessage (sendEmail: SendEmail) (_: Actor<EmailSenderMessage
            Topic = "Welcome"
            Body = "Tja"
        }
-       sendEmail data |> ignore // TODO: handle
+       sendEmail data |> Async.StartAsTask |> ignore
    | SendBookRequestedToBorrow info ->
        let data = {
            Email = info.Owner.Email
            Topic = "Borrow book request"
            Body = createBookRequestedToBorrowEmailBody info
        }
-       sendEmail data |> ignore
+       sendEmail data |> Async.StartAsTask |> ignore
    | _ -> ()

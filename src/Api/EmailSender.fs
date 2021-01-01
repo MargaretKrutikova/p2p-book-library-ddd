@@ -15,7 +15,6 @@ type SmtpConfiguration = {
     SmtpPassword: string
     SmtpUsername: string
     Port: int
-    
     SenderEmail: string
     SenderName: string
 }
@@ -30,6 +29,8 @@ type EmailSenderError =
     | SendEmailError
     | CreateMessageError
 
+type SendEmailResult = Async<Result<unit, EmailSenderError>>
+
 module EmailSender =
     let private awaitEmailTask (task: Task) =
         async {
@@ -40,7 +41,7 @@ module EmailSender =
                 return Ok ()
         }
 
-    let private createMessage (config: SmtpConfiguration) (data: SendEmailData) =
+    let private createMessage (logger: ILogger) (config: SmtpConfiguration) (data: SendEmailData) =
         try 
             let sender = MailboxAddress.Parse(config.SenderEmail)
             sender.Name <- config.SenderEmail
@@ -50,11 +51,13 @@ module EmailSender =
             message.Text <- data.Body
             MimeMessage([sender], [receiver], data.Topic, message) |> Ok 
         with
-        | _ -> Error CreateMessageError
+        | e ->
+            logger.LogError(e, "Error creating message")
+            Error CreateMessageError
         
-    let send (config: SmtpConfiguration) (logger: ILogger) (data: SendEmailData) =
+    let send (config: SmtpConfiguration) (logger: ILogger) (data: SendEmailData): SendEmailResult =
         asyncResult {
-            let! msg =  createMessage config data |> async.Return 
+            let! msg =  createMessage logger config data |> async.Return 
 
             use smtp = new SmtpClient()
             do! smtp.ConnectAsync(config.SmtpServer, config.Port) |> awaitEmailTask
@@ -63,9 +66,13 @@ module EmailSender =
             do! smtp.DisconnectAsync(true) |> awaitEmailTask
         }
         
-    let sendToPickupDirectory (pickupDirectory: string) (config: SmtpConfiguration) (data: SendEmailData) =
+    let sendToPickupDirectory
+        (pickupDirectory: string)
+        (config: SmtpConfiguration) 
+        (logger: ILogger)
+        (data: SendEmailData): SendEmailResult =
         asyncResult {
-            let! message =  createMessage config data |> async.Return 
+            let! message = createMessage logger config data |> async.Return 
 
             let path = Path.Combine (pickupDirectory, Guid.NewGuid().ToString() + ".eml")
             use stream = File.Open(path, FileMode.CreateNew)
