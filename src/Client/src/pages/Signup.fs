@@ -15,18 +15,21 @@ type CreateUserApiState =
 
 type Model =
     { UserName: string
+      Email: string
       CreateUserApiState: CreateUserApiState }
     static member CreateDefault() =
         { UserName = ""
+          Email = ""
           CreateUserApiState = NotAsked }
 
 let toUserInputModel model: UserRegisterInputModel =
     { Name = model.UserName
-      Email = ""
+      Email = model.Email
       IsSubscribedToUserListingActivity = true }
 
 type Msg =
     | UserNameChanged of string
+    | EmailChanged of string
     | SubmitClicked
     | UserCreated of UserRegisteredOutputModel
     | UserCreateError of ApiError
@@ -38,6 +41,7 @@ type OnUserCreated = Guid -> unit
 let update (onUserCreated: OnUserCreated) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
     | UserNameChanged name -> { model with UserName = name }, Cmd.none
+    | EmailChanged email -> { model with Email = email }, Cmd.none
     | SubmitClicked ->
         let userModel = toUserInputModel model
         { model with
@@ -69,6 +73,10 @@ let view =
                    Html.input [ prop.onChange (eventToInputValue >> UserNameChanged >> dispatch)
                                 prop.value model.UserName
                                 prop.type' "Text" ]
+                   Html.input [ prop.onChange (eventToInputValue >> EmailChanged >> dispatch)
+                                prop.value model.Email
+                                prop.type' "Email"  ]
                    Html.button [ prop.onClick (fun _ -> dispatch SubmitClicked)
                                  prop.children [ Html.text "Sign up" ] ]
-                   Html.div [ resultView ] ])
+                   Html.div [ resultView ] ]
+        )
