@@ -31,6 +31,8 @@ type UserBookListingDto = {
 type UserDto = {
     Id: UserId
     Name: string
+    Email: string
+    IsSubscribedToUserListingActivity: bool
 }
    
 module QueryPersistenceOperations =

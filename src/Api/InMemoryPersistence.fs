@@ -1,10 +1,16 @@
 module Api.InMemoryPersistence
 
 open System.Threading.Tasks
+open Api.Actors.EmailSenderActor
+open Api.Actors.EmailSenderSupervisor
 open Core.Domain.Types
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
 open FsToolkit.ErrorHandling
+
+type InfrastructurePersistenceOperations =
+    { GetUserEmailInfo: GetUserEmailInfo
+      GetBookListingEmailInfo: GetBookListingEmailInfo }
 
 module InMemoryPersistence =
     let private toUserBookListingDto (listing: BookListing): UserBookListingDto =
@@ -13,7 +19,7 @@ module InMemoryPersistence =
           Title = listing.Title |> Title.value
           Status = listing.Status }
 
-    let create (): (CommandPersistenceOperations * QueryPersistenceOperations) =
+    let create (): (CommandPersistenceOperations * QueryPersistenceOperations * InfrastructurePersistenceOperations) =
         let mutable users: UserDto list = List.empty
         let mutable listings: BookListing list = List.empty
 
@@ -52,7 +58,9 @@ module InMemoryPersistence =
             fun userModel ->
                 let user: UserDto =
                     { Id = userModel.UserId
-                      Name = userModel.Name }
+                      Name = userModel.Name
+                      Email = userModel.Email
+                      IsSubscribedToUserListingActivity = userModel.UserSettings.IsSubscribedToUserListingActivity }
 
                 users <- user :: users
                 Task.FromResult(Ok())
@@ -67,6 +75,30 @@ module InMemoryPersistence =
                 listings <- updatedListings
                 Task.FromResult(Ok())
 
+        let getUserEmailInfo: GetUserEmailInfo =
+            fun userId ->
+                users
+                |> Seq.filter (fun user -> user.Id = userId)
+                |> Seq.tryHead
+                |> Result.requireSome "User not found"
+                |> Result.map (fun user ->
+                    { Name = user.Name
+                      Email = user.Email
+                      IsSubscribedToUserListingActivity = user.IsSubscribedToUserListingActivity }: UserEmailInfoDto)
+                |> async.Return
+
+        let getBookListingEmailInfo: GetBookListingEmailInfo =
+            fun listingId ->
+                listings
+                |> Seq.filter (fun listing -> listing.ListingId = listingId)
+                |> Seq.tryHead
+                |> Result.requireSome "Book listing not found"
+                |> Result.map (fun listing ->
+                    { OwnerId = listing.UserId
+                      Title = listing.Title |> Title.value
+                      Author = listing.Author |> Author.value }: BookListingEmailInfoDto)
+                |> async.Return
+
         let commandOperations: CommandPersistenceOperations =
             { GetUserById = getUserById
               CreateListing = createListing
@@ -76,4 +108,8 @@ module InMemoryPersistence =
             { GetUserByName = getUserByName
               GetListingsByUserId = getListingByUserId }
 
-        (commandOperations, queryOperations)
+        let infrastructureOperations: InfrastructurePersistenceOperations =
+            { GetUserEmailInfo = getUserEmailInfo
+              GetBookListingEmailInfo = getBookListingEmailInfo }
+
+        (commandOperations, queryOperations, infrastructureOperations)

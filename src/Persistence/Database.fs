@@ -131,6 +131,8 @@ module QueryPersistenceImpl =
       {
         Id = UserId.create dbUser.id
         Name = dbUser.name
+        Email = "" // TODO: add to db
+        IsSubscribedToUserListingActivity = true 
       }
   
   let getListingsByUserId (dbConnection: IDbConnection): GetListingsByUserId =

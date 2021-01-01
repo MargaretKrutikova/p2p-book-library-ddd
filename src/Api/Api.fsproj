@@ -17,12 +17,15 @@
 
   <ItemGroup>
     <Compile Include="EmailSender.fs" />
+    <Compile Include="Actors\EmailSenderActor.fs" />
+    <Compile Include="Actors\EmailSenderSupervisor.fs" />
+
     <Compile Include="Models.fs" />
     <Compile Include="Actors.fs" />
+    <Compile Include="InMemoryPersistence.fs" />
     <Compile Include="CompositionRoot.fs" />
     <Compile Include="ApiHandlers.fs" />
     <Compile Include="RemotingHandlers.fs" />
-    <Compile Include="InMemoryPersistence.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
