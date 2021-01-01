@@ -49,7 +49,7 @@ module EmailSender =
             
             let message = TextPart(TextFormat.Html)
             message.Text <- data.Body
-            MimeMessage([sender], [receiver], data.Topic, message) |> Ok 
+            MimeMessage([|sender :> InternetAddress|], [|receiver :> InternetAddress|], data.Topic, message) |> Ok 
         with
         | e ->
             logger.LogError(e, "Error creating message")
