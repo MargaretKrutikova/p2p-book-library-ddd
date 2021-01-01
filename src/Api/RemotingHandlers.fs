@@ -1,4 +1,4 @@
-module Api.BookListing.RemotingHandlers
+module Api.RemotingHandlers
 
 open Api.Models
 open Api.ApiHandlers
