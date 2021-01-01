@@ -65,39 +65,28 @@ let compose (): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
     CompositionRoot.compose persistence
 
-
+module SignalRSettings = 
+    let settings: SignalR.Settings<BookListingSignalRAction, Response> = {
+         EndpointPattern = Endpoints.Root
+         Send = SignalRHubImpl.send
+         Invoke = SignalRHubImpl.invoke
+         Config = None 
+    }
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
     let root = compose ()
     (match env.IsDevelopment() with
-    | true  ->
-        app.UseDeveloperExceptionPage()
-            .UseCors(configureCors)
-            .UseSignalR<BookListingSignalRAction, Response>(
-                                                           { EndpointPattern = Endpoints.Root
-                                                             Send = SignalRHubImpl.send
-                                                             Invoke = SignalRHubImpl.invoke
-                                                             Config = None }
-                                                       )
-    | false ->
-        app .UseGiraffeErrorHandler(errorHandler)
-            //.UseHttpsRedirection()
-            )
-         .UseCors(configureCors)
-        .UseSignalR<BookListingSignalRAction, Response>(
-                                                           { EndpointPattern = Endpoints.Root
-                                                             Send = SignalRHubImpl.send
-                                                             Invoke = SignalRHubImpl.invoke
-                                                             Config = None }
-                                                       )
+        | true  -> app.UseDeveloperExceptionPage().UseCors(configureCors)
+        | false -> app.UseGiraffeErrorHandler(errorHandler))
+        .UseSignalR<BookListingSignalRAction, Response>(SignalRSettings.settings)
         .UseGiraffe(webApp root)
 
 let configureServices (services : IServiceCollection) =
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
     services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
-    services.AddSignalR() |> ignore
+    services.AddSignalR(SignalRSettings.settings) |> ignore
     
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()

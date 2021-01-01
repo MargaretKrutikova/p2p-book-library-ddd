@@ -79,12 +79,29 @@ module SignalRHubImpl =
         // update root msg
         task {return Response.MyListings List.Empty } 
 
-    let send (msg: BookListingSignalRAction) (hubContext: FableHub) =
+    // let send (msg: BookListingSignalRAction) (hubContext: FableHub) =
         //let root = hubContext.Services.GetService(typedefof<CompositionRoot>) :?> CompositionRoot
 //        taskResult {
 //            let! res = update root msg
 //            do! (hubContext :?> FableHub<BookListingSignalRAction,Response>).Clients.Caller.Send res
 //        } |> Task.map (Result.defaultWith (fun _ -> failwith "")) :> Task
-        task {return Response.MyListings List.Empty} :> Task
-        
+       // task {return Response.MyListings List.Empty} :> Task
+
+    let send (msg: BookListingSignalRAction) (hubContext: FableHub<BookListingSignalRAction,Response>) =
+        Response.MyListings List.Empty
+        |> hubContext.Clients.Caller.Send
+    
+//    [<RequireQualifiedAccess>]
+//    module Stream =
+//        let sendToClient (msg: StreamFrom.Action) (hubContext: FableHub<Action,Response>) =
+//            match msg with
+//            | StreamFrom.Action.AppleStocks ->
+//                Stocks.appleStocks
+//                |> AsyncSeq.mapAsync (fun stock ->
+//                    async {
+//                        do! Async.Sleep 25
+//                        return StreamFrom.Response.AppleStock stock
+//                    }
+//                )
+//                |> AsyncSeq.toAsyncEnum
         
