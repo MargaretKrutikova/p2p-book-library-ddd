@@ -3,7 +3,9 @@ module Api.CompositionRoot
 open Api.Actors
 open Akka.Actor
 
+open Api.Actors.EmailSenderSupervisor
 open Api.Email
+open Api.InMemoryPersistence
 open Core.Domain
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
@@ -14,9 +16,10 @@ open Microsoft.Extensions.Logging
     
 let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Messages.Command) =
     taskResult {
-        let! events = commandHandler command
-        publish events system.EventStream
-        return events
+        let! event = commandHandler command
+        publish event system.EventStream
+        publish (event |> EmailSupervisorMessage.DomainEvent) system.EventStream
+        return event
     }
 
 type CompositionRoot = {
@@ -26,8 +29,24 @@ type CompositionRoot = {
     GetUserByName: GetUserByName
 }
 
-let compose (smtpConfig: SmtpConfiguration) (logger: ILogger) (commandPersistence: CommandPersistenceOperations) (queryPersistence: QueryPersistenceOperations): CompositionRoot = 
-  let system = setupActors smtpConfig logger
+let private createEmailActorDependencies sendEmail (infrastructurePersistence: InfrastructurePersistenceOperations): EmailSenderSupervisor.Dependencies =
+    {
+        GetUserEmailInfo = infrastructurePersistence.GetUserEmailInfo
+        GetBookListingEmailInfo = infrastructurePersistence.GetBookListingEmailInfo
+        SendEmail =  sendEmail
+    }
+
+let compose
+    (smtpConfig: SmtpConfiguration)
+    (emailPickupDirectory: string)
+    (logger: ILogger)
+    (commandPersistence: CommandPersistenceOperations)
+    (queryPersistence: QueryPersistenceOperations)
+    (infrastructurePersistence: InfrastructurePersistenceOperations): CompositionRoot =
+  let sendEmail = EmailSender.sendToPickupDirectory emailPickupDirectory smtpConfig logger
+  let emailDeps = createEmailActorDependencies sendEmail infrastructurePersistence
+  let system =  ActorSystem.setup emailDeps logger
+  
   let commandHandler = handleCommand commandPersistence |> commandHandlerWithPublish system 
   
   {

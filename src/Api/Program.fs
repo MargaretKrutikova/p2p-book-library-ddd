@@ -1,10 +1,12 @@
 module Api.App
 
 open System
+open System.Configuration
 open Api.Email
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
@@ -42,19 +44,21 @@ let configureCors (builder : CorsPolicyBuilder) =
        .AllowAnyHeader()
        |> ignore
 
-let compose (logger): CompositionRoot.CompositionRoot =
+let compose (configuration: IConfiguration) (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
     
-    // TODO: use ConfigurationManager.AppSettings.
+    let smtpConfigJson = configuration.GetSection("SmtpConfig")
     let smtpConfig: SmtpConfiguration = {
-        SmtpServer = ""
-        SmtpPassword = ""
-        SmtpUsername = ""
-        SenderEmail = "app@app.com"
-        SenderName = "app"
-        Port = 587 }
+        SmtpServer = smtpConfigJson.GetValue("SmtpServer")
+        SmtpPassword = smtpConfigJson.GetValue("SmtpPassword")
+        SmtpUsername = smtpConfigJson.GetValue("SmtpUsername")
+        SenderEmail = smtpConfigJson.GetValue("SenderEmail")
+        SenderName = smtpConfigJson.GetValue("SenderName")
+        Port = smtpConfigJson.GetValue("Port") }
+    
+    let pickupDirectory = @""
 
-    persistence ||> CompositionRoot.compose smtpConfig logger
+    persistence |||> CompositionRoot.compose smtpConfig pickupDirectory logger
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
@@ -69,16 +73,25 @@ let configureApp (app : IApplicationBuilder) =
         .UseGiraffe(webApp ())
 
 let configureServices (services : IServiceCollection) =
+    let serviceProvider = services.BuildServiceProvider()
+    let config = serviceProvider.GetService<IConfiguration>()
+    
     services.AddCors()    |> ignore
     services.AddGiraffe() |> ignore
     services.AddSingleton<CompositionRoot.CompositionRoot>
         (fun container ->
             let logger = container.GetRequiredService<ILogger<IStartup>>() // TODO: fix later
-            compose logger) |> ignore
+            compose config logger) |> ignore
 
 let configureLogging (builder : ILoggingBuilder) =
     builder.AddConsole()
            .AddDebug() |> ignore
+
+let configureAppConfiguration  (context: WebHostBuilderContext) (config: IConfigurationBuilder) =  
+    config
+        .AddJsonFile("appsettings.json",false,true)
+        .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName ,true)
+        .AddEnvironmentVariables() |> ignore
 
 [<EntryPoint>]
 let main args =
@@ -87,6 +100,7 @@ let main args =
             fun webHostBuilder ->
                 webHostBuilder
                     .Configure(Action<IApplicationBuilder> configureApp)
+                    .ConfigureAppConfiguration(configureAppConfiguration)
                     .ConfigureServices(configureServices)
                     .ConfigureLogging(configureLogging)
                     |> ignore)
