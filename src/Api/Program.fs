@@ -56,7 +56,7 @@ let compose (configuration: IConfiguration) (logger): CompositionRoot.Compositio
         SenderName = smtpConfigJson.GetValue("SenderName")
         Port = smtpConfigJson.GetValue("Port") }
     
-    let pickupDirectory = @""
+    let pickupDirectory = @"/Users/margaritakrutikova/code/p2p-book-library/src/Api/mails"
 
     persistence |||> CompositionRoot.compose smtpConfig pickupDirectory logger
 
