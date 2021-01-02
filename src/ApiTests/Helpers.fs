@@ -39,7 +39,7 @@ module Url =
     let registerUser = "/api/user/register"
     let loginUser = "/api/user/login"
     let publishListing = "/api/listing/publish"
-    let getAllPublishedListings = ""
+    let getAllListings = "/api/listing/getAllListings"
 
 module Utils =
     let toStringContent (obj: obj) =
@@ -49,6 +49,9 @@ module Utils =
     
     let postAsync (url: string) model (client: HttpClient) =
         client.PostAsync(url, model |> toRemotingApiInput) |> Async.AwaitTask
+    
+    let getAsync (url: string) (client: HttpClient) =
+        client.GetAsync(url) |> Async.AwaitTask
 
     let callWithResponse<'a> (apiCall: Async<HttpResponseMessage>) =
         async {
@@ -90,8 +93,21 @@ module ListingApi =
         Title: string
     }
     
-    type ListingPublishedOutputModel = {
-        Id: Guid
+    type ListingPublishedOutputModel = { Id: Guid }
+    type ListingStatus =
+        | Available
+        | RequestedToBorrow
+        | Borrowed
+    type ListingOutputModel = {
+        ListingId: Guid
+        OwnerName: string
+        Author: string
+        Title: string
+        ListingStatus: string
+    }
+    
+    type PublishedListings = {
+        Listings: ListingOutputModel array
     }
     
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
@@ -99,4 +115,8 @@ module ListingApi =
     
     let publishWithResponse model =
         publish model >> Utils.callWithOk<ListingPublishedOutputModel>
+    
+    let getAllListings client = Utils.getAsync Url.getAllListings client
+    let getAllListingsWithResponse client =
+        getAllListings client |> Utils.callWithOk<PublishedListings>
     
