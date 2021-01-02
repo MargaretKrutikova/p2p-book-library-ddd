@@ -38,65 +38,65 @@ module.exports = (env, options) => {
     console.log("Bundling for " + (isProduction ? "production" : "development") + "...");
 
     return {
-        entry: isProduction ? // We don't use the same entry for dev and production, to make HMR over style quicker for dev env
-            {
-                demo: [
-                    './src/App.fsproj',
-                    './src/main.scss'
-                ]
-            } : {
-                app: [
-                    './src/App.fsproj'
-                ],
-                style: [
-                    './src/main.scss'
-                ]
-            },
+            entry: isProduction ? // We don't use the same entry for dev and production, to make HMR over style quicker for dev env
+                {
+                    demo: [
+                        './src/App.fsproj',
+                        './src/main.scss'
+                    ]
+                } : {
+                    app: [
+                        './src/App.fsproj'
+                    ],
+                    style: [
+                        './src/main.scss'
+                    ]
+                },
             plugins: isProduction ?
-            commonPlugins.concat([
-                new MiniCssExtractPlugin({
-                    filename: 'style.css'
-                }),
-                new CopyWebpackPlugin([
-                    { from: './static' }
+                commonPlugins.concat([
+                    new MiniCssExtractPlugin({
+                        filename: 'style.css'
+                    }),
+                    new CopyWebpackPlugin([
+                        { from: './static' }
+                    ])
                 ])
-            ])
-            : commonPlugins.concat([
-                new webpack.HotModuleReplacementPlugin(),
-                new webpack.NamedModulesPlugin()
-            ]),
-        output: {
-            path: path.join(__dirname, './output'),
-            filename: isProduction ? '[name].[hash].js' : '[name].js'
-        },
+                : commonPlugins.concat([
+                    new webpack.HotModuleReplacementPlugin(),
+                    new webpack.NamedModulesPlugin()
+                ]),
+            output: {
+                path: path.join(__dirname, './output'),
+                filename: isProduction ? '[name].[hash].js' : '[name].js'
+            },
             devServer: {
                 contentBase: contentFolder,
                 port: CONFIG.devServerPort,
                 proxy: CONFIG.devServerProxy,
             },
-        module: {
-            rules: [{
-                test: /\.fs(x|proj)?$/,
-                use: "fable-loader"
-            },
-            {
-                test: /\.(sass|scss|css)$/,
-                use: [
-                    isProduction
-                        ? MiniCssExtractPlugin.loader
-                        : 'style-loader',
-                    'css-loader',
-                    'sass-loader',
-                ],
-            },
-            {
-                test: /\.css$/,
-                use: ['style-loader', 'css-loader']
-            },
-            {
-                test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*$|$)/,
-                use: ["file-loader"]
-            }]
-        }
+            module: {
+                rules: [{
+                    test: /\.fs(x|proj)?$/,
+                    use: "fable-loader"
+                },
+                {
+                    test: /\.(sass|scss|css)$/,
+                    use: [
+                        isProduction
+                            ? MiniCssExtractPlugin.loader
+                            : 'style-loader',
+                        'css-loader',
+                        'sass-loader',
+                    ],
+                },
+                {
+                    test: /\.css$/,
+                    use: ['style-loader', 'css-loader']
+                },
+                {
+                    test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*$|$)/,
+                    use: ["file-loader"]
+                }]
+            }
     }
 }
