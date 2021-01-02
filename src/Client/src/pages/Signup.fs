@@ -6,6 +6,8 @@ open Client.Utils
 open Feliz
 open Elmish
 open Feliz.UseElmish
+open Fulma
+open Fable.React
 
 type CreateUserApiState =
     | NotAsked
@@ -22,6 +24,10 @@ with
 
 let toUserInputModel model: UserRegisterInputModel = { Name = model.UserName }
 
+let isSignupFormValid (model: Model): bool =
+    String.IsNullOrWhiteSpace model.UserName
+    |> not
+    
 type Msg =
     | UserNameChanged of string
     | SubmitClicked
@@ -44,24 +50,60 @@ let update (onUserCreated: OnUserCreated) (message:Msg) (model:Model) : Model * 
     | UserCreated output ->
         { model with CreateUserApiState = CreatedUser }, Cmd.ofSub (fun _ -> onUserCreated output.Id)
 
-let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}) ->
-   let model, dispatch = React.useElmish(init, update props.onUserCreated, [| |])        
-   let resultView =
-       match model.CreateUserApiState with
-       | NotAsked -> Html.span []
-       | Loading -> Html.text "..."
-       | Error e -> Html.text "Error"
-       | CreatedUser -> Html.text "User created"
+// VIEW
 
-   Html.div [
-           Html.h1 [ prop.children [ Html.text "Sign up" ] ]
-           
-           Html.input [
-                   prop.onChange (eventToInputValue >> UserNameChanged >> dispatch)
-                   prop.value model.UserName
-                   prop.type' "Text"
-               ]
-           Html.button [ prop.onClick (fun _ -> dispatch SubmitClicked); prop.children [Html.text "Sign up" ] ]
-           Html.div [ resultView ]
-       ]
-)
+let signupResultMessage (result: CreateUserApiState) =
+    match result with
+    | CreatedUser _ ->
+        Notification.notification [ Notification.Color IsSuccess
+                                    Notification.IsLight ] [
+            str "You are now registered!"
+        ]
+    | Error _ ->
+        Notification.notification [ Notification.Color IsDanger
+                                    Notification.IsLight ] [
+            str "An unexpected error occurred. Please try again later."
+        ]
+    | NotAsked -> div [] []
+    | Loading -> div [] []
+
+let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}) ->
+    let model, dispatch = React.useElmish(init, update props.onUserCreated, [| |])        
+    let canSubmit =
+            isSignupFormValid model
+            && model.CreateUserApiState
+            <> Loading
+
+    Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
+        Heading.h2 [] [str "Sign up"]
+
+        Box.box' [] [
+            form [] [
+                Field.div [] [
+                    Label.label [] [ str "Username" ]
+                    Control.div [] [
+                        Input.text [ Input.Value model.UserName
+                                     Input.OnChange(eventToInputValue >> UserNameChanged >> dispatch) ]
+                    ]
+                ]
+
+                Field.div [] [
+                    Control.div [] [
+                        signupResultMessage model.CreateUserApiState
+                    ]
+                ]
+                Field.div [] [
+                    Control.div [] [
+                        Button.button [ Button.Disabled(canSubmit |> not)
+                                        Button.Color IsPrimary
+                                        Button.IsFullWidth
+                                        Button.OnClick(fun e ->
+                                            e.preventDefault ()
+                                            dispatch SubmitClicked) ] [
+                            str "Sign up"
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ])

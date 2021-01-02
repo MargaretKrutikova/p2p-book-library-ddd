@@ -41,10 +41,10 @@ let canViewIfLoggedIn route =
 let canViewIfLoggedOut =
     function 
     | Route.MyBookListings -> false
-    | _ -> false
+    | _ -> true
 
 let loggedInPageOrDefault page =
     if canViewIfLoggedIn page then page else Route.Home
 
-let loggedOutPageOrDefault page =
+let anonymousPageOrDefault page =
     if canViewIfLoggedOut page then page else Route.SignIn

@@ -30,9 +30,9 @@ type Msg =
 type Dispatch = Msg -> unit
 
 let redirectIfProtected (user: AppUser) (route: Route): Route =
-    match route, user with
-    | Route.MyBookListings, Anonymous -> Route.SignIn
-    | _ -> route
+    match user with
+    | Anonymous -> anonymousPageOrDefault route 
+    | LoggedIn _ -> loggedInPageOrDefault route
 
 let init () =
     let initialUrl = parseUrl (Router.currentUrl ())
@@ -43,20 +43,11 @@ let init () =
 let update msg state =
     match msg with
     | PageChanged nextPage ->
-        let allowedPage =
-            match state.AppUser with
-            | LoggedIn _ -> loggedInPageOrDefault nextPage
-            | Anonymous -> loggedOutPageOrDefault nextPage
-
+        let allowedPage = nextPage |> redirectIfProtected state.AppUser
         { state with CurrentPage = allowedPage }, Cmd.none
     | UserCreated -> state, Cmd.ofSub (fun _ -> navigateToSignIn ())
     | NavigateToRoute route ->
-        state,
-        Cmd.ofSub (fun _ ->
-            route
-            |> redirectIfProtected state.AppUser
-            |> urlToRoute
-            |> Router.navigate)
+        state, route |> urlToRoute |> Cmd.navigate 
     | UserLoggedIn user ->
         // TODO: save cookies with the logged in user name
         { state with
@@ -83,11 +74,11 @@ let navbarView (appUser: AppUser) (dispatch: Dispatch) =
                  | Anonymous ->
                      [ div [ ClassName "buttons" ] [
                          Button.button [ Button.OnClick(fun _ -> NavigateToRoute Route.SignIn |> dispatch)
-                                         Button.Color IsPrimary
                                          Button.IsLight ] [
-                             str "Sign in"
+                             str "Log in"
                          ]
-                         Button.button [ Button.Color IsWhite ] [
+                         Button.button [ Button.OnClick(fun _ -> NavigateToRoute Route.SignUp |> dispatch)
+                                         Button.Color IsPrimary ] [
                              str "Sign up"
                          ]
                        ] ]

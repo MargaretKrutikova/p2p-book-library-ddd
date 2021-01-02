@@ -85,7 +85,7 @@ let view =
             <> Loading
 
         Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
-            Heading.h2 [] [str "Sign in"]
+            Heading.h2 [] [str "Log in"]
 
             Box.box' [] [
                 form [] [
@@ -110,7 +110,7 @@ let view =
                                             Button.OnClick(fun e ->
                                                 e.preventDefault ()
                                                 dispatch LoginClicked) ] [
-                                str "Sign in"
+                                str "Log in"
                             ]
                         ]
                     ]
