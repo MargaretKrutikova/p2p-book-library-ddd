@@ -8,103 +8,168 @@ open System
 open Feliz
 open Elmish
 open Feliz.UseElmish
+open Fable.React.Props
+open Fable.React
+open Fulma
 
-type MyBookListingsApiState =
-    | NotAsked
-    | Loading
-    | Error of ApiError
-    | Data of UserListingOutputModel list
+type NewBookListingInputModel = { Author: string; Title: string }
 
-type NewBookListingInputModel = {
-    Author: string
-    Title: string
-}
+type Model =
+    { MyBookListings: ApiState<UserListingOutputModel list>
+      PublishBookListingState: ApiState<unit>
+      NewBookListing: NewBookListingInputModel }
+    static member CreateDefault() =
+        { MyBookListings = Loading
+          NewBookListing = { Title = ""; Author = "" }
+          PublishBookListingState = NotAsked }
 
-type Model = {
-    MyBookListings: MyBookListingsApiState
-    NewBookListing: NewBookListingInputModel
-}
-with
-    static member CreateDefault () = { 
-        MyBookListings = Loading
-        NewBookListing = { Title = ""; Author = "" }
-    }
-    
-let canAddBookListing inputModel =
-    inputModel.Author |> stringNotEmpty &&
-    inputModel.Title |> stringNotEmpty
+let canPublishBookListing inputModel =
+    inputModel.Author
+    |> stringNotEmpty
+    && inputModel.Title |> stringNotEmpty
 
-let toCreateListingInputModel (userId: Guid) (model: Model): ListingPublishInputModel = {
-   UserId = userId
-   Title = model.NewBookListing.Title
-   Author = model.NewBookListing.Author
-}
+let toPublishListingInputModel (userId: Guid) (model: Model): ListingPublishInputModel =
+    { UserId = userId
+      Title = model.NewBookListing.Title
+      Author = model.NewBookListing.Author }
 
 type Msg =
     | ReceivedMyBookListings of UserListingOutputModel list
     | MyBookListingsError of ApiError
     | NewBookListingInputChanged of NewBookListingInputModel
-    | AddBookListingClicked
-    | BookListingAdded of ListingPublishedOutputModel
-    | AddBookListingError of ApiError
+    | PublishBookListingClicked
+    | BookListingPublished of ListingPublishedOutputModel
+    | PublishBookListingError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
-    Model.CreateDefault (), Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
-    
+    Model.CreateDefault(),
+    Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+
 let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
-    | ReceivedMyBookListings data -> { model with MyBookListings = Data data }, Cmd.none
-    | MyBookListingsError error -> { model with MyBookListings = Error error }, Cmd.none
-    | NewBookListingInputChanged inputModel -> { model with NewBookListing = inputModel }, Cmd.none
-    | AddBookListingClicked -> 
-        let addBookListingModel = toCreateListingInputModel userId model
-        model, Cmd.OfAsync.eitherAsResult bookListingApi.publish addBookListingModel BookListingAdded AddBookListingError
-    | BookListingAdded _ -> 
-        { model with MyBookListings = Loading }, Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
-    | AddBookListingError _ -> model, Cmd.none
+    | ReceivedMyBookListings data ->
+        { model with
+              MyBookListings = ApiState.Data data },
+        Cmd.none
+    | MyBookListingsError error ->
+        { model with
+              MyBookListings = Error error },
+        Cmd.none
+    | NewBookListingInputChanged inputModel ->
+        { model with
+              NewBookListing = inputModel },
+        Cmd.none
+    | PublishBookListingClicked ->
+        let publishBookListingModel = toPublishListingInputModel userId model
+        model,
+        Cmd.OfAsync.eitherAsResult
+            bookListingApi.publish
+            publishBookListingModel
+            BookListingPublished
+            PublishBookListingError
+    | BookListingPublished _ ->
+        { model with MyBookListings = Loading },
+        Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+    | PublishBookListingError _ -> model, Cmd.none
 
-let addBookListingView inputModel dispatch =
+// VIEW
+
+let addBookListingResultMessage (result: ApiState<unit>) =
+    match result with
+    | ApiState.Data _ -> Notification.success "Published successfully!"
+    | Error _ -> Notification.error
+    | NotAsked -> div [] []
+    | Loading -> div [] []
+
+let publishBookListingView (model: Model) dispatch =
+    let inputModel = model.NewBookListing
     let updateAuthor str: NewBookListingInputModel = { inputModel with Author = str }
     let updateTitle str: NewBookListingInputModel = { inputModel with Title = str }
 
-    Html.div [
-       Html.h1 [ prop.children [ Html.text "Add book listing" ] ]
-       Html.form [
-           Html.input [
-                   prop.onChange (eventToInputValue >> updateAuthor >> NewBookListingInputChanged >> dispatch)
-                   prop.value inputModel.Author
-                   prop.type' "Text"
-                   prop.placeholder "Author"
-               ]
-           Html.input [
-                   prop.onChange (eventToInputValue >> updateTitle >> NewBookListingInputChanged >> dispatch)
-                   prop.value inputModel.Title
-                   prop.type' "Text"
-                   prop.placeholder "Title"
-               ]
-           Html.button [ 
-               prop.type' "submit"
-               prop.onClick (fun e -> 
-                                e.preventDefault ()
-                                dispatch AddBookListingClicked)
-               prop.children [Html.text "Add" ] ]
-        ]
-   ]
+    Columns.columns [ Columns.IsCentered ] [
+        Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
+            Heading.h3 [] [ str "Publish book" ]
+            Box.box' [] [
+                form [] [
+                    Field.div [] [
+                        Label.label [] [ str "Author" ]
+                        Control.div [] [
+                            Input.text [ Input.Value inputModel.Author
+                                         Input.OnChange
+                                             (eventToInputValue
+                                              >> updateAuthor
+                                              >> NewBookListingInputChanged
+                                              >> dispatch) ]
+                        ]
+                    ]
+                    Field.div [] [
+                        Label.label [] [ str "Title" ]
+                        Control.div [] [
+                            Input.text [ Input.Value inputModel.Title
+                                         Input.OnChange
+                                             (eventToInputValue
+                                              >> updateTitle
+                                              >> NewBookListingInputChanged
+                                              >> dispatch) ]
+                        ]
+                    ]
 
-let listingsView (listings: UserListingOutputModel list) =
-    Html.ul [
-        prop.children (listings |> Seq.map (fun l -> Html.li (l.Id.ToString())) |> Seq.toList)
+                    Field.div [] [
+                        Control.div [] [
+                            addBookListingResultMessage model.PublishBookListingState
+                        ]
+                    ]
+                    Field.div [] [
+                        Control.div [] [
+                            Button.button [ Button.Disabled(canPublishBookListing inputModel |> not)
+                                            Button.Color IsPrimary
+                                            Button.IsFullWidth
+                                            Button.OnClick(fun e ->
+                                                e.preventDefault ()
+                                                dispatch PublishBookListingClicked) ] [
+                                str "Publish"
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
     ]
 
-let view = React.functionComponent(fun (props: {| userId: Guid |}) ->
-   let model, dispatch = React.useElmish(init props.userId, update props.userId, [| |])        
-   match model.MyBookListings with
-       | NotAsked -> Html.span []
-       | Loading -> Html.text "..."
-       | Error e -> Html.text "Error"
-       | Data listings -> 
-            Html.div [
-                addBookListingView model.NewBookListing dispatch
-                listingsView listings
+let myBookListingView (listing: UserListingOutputModel) =
+    Columns.columns [ Columns.IsCentered
+                      Columns.IsGapless ] [
+        Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
+            Icon.icon [ Icon.Size IsSmall
+                        Icon.CustomClass "ml-1 mr-2"
+                        Icon.Props [] ] [
+                i [ Style [ Color "" ]
+                    ClassName "fa fa-lg fa-book" ] []
             ]
-)
+            str (listing.Title + listing.Author) 
+        ]
+    ]
+
+let listingsView (listings: UserListingOutputModel list) =
+    Html.ul
+        [ prop.children
+            (listings
+             |> Seq.map myBookListingView
+             |> Seq.toList) ]
+
+let view =
+    React.functionComponent (fun (props: {| userId: Guid |}) ->
+        let model, dispatch =
+            React.useElmish (init props.userId, update props.userId, [||])
+        
+        let allListingsView =
+            match model.MyBookListings with
+            | ApiState.NotAsked -> Html.span []
+            | Loading -> Html.text "..."
+            | Error _ -> Notification.error
+            | ApiState.Data listings -> listingsView listings
+        
+        Column.column [ Column.Width(Screen.All, Column.IsFull) ] [
+            publishBookListingView model dispatch
+            allListingsView
+        ])
