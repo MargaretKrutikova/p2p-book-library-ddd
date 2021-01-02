@@ -13,6 +13,15 @@ module InMemoryPersistence =
           Title = listing.Title |> Title.value
           Status = listing.Status }
 
+    let private toBookListingDto (listing: BookListing) (user: UserDto): BookListingDto =
+        {
+          ListingId = listing.ListingId
+          UserName = user.Name
+          UserId = user.Id
+          Author = listing.Author |> Author.value
+          Title = listing.Title |> Title.value
+          Status = listing.Status }
+    
     let create (): (CommandPersistenceOperations * QueryPersistenceOperations) =
         let mutable users: UserDto list = List.empty
         let mutable listings: BookListing list = List.empty
@@ -43,6 +52,18 @@ module InMemoryPersistence =
                     { Id = user.Id; Name = user.Name }: CommandPersistenceOperations.UserReadModel)
                 |> Task.FromResult
 
+        let getAllPublishedListings: QueryPersistenceOperations.GetAllPublishedListings =
+            fun () ->
+                listings
+                |> Seq.map (fun listing ->
+                    users
+                    |> Seq.filter (fun u -> u.Id = listing.UserId)
+                    |> Seq.head
+                    |> toBookListingDto listing)
+                |> Seq.toList
+                |> Ok
+                |> Task.FromResult
+        
         let createListing: CommandPersistenceOperations.CreateListing =
             fun listing ->
                 listings <- listing :: listings
@@ -74,6 +95,7 @@ module InMemoryPersistence =
 
         let queryOperations: QueryPersistenceOperations =
             { GetUserByName = getUserByName
-              GetListingsByUserId = getListingByUserId }
+              GetListingsByUserId = getListingByUserId
+              GetAllPublishedListings = getAllPublishedListings }
 
         (commandOperations, queryOperations)

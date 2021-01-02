@@ -2,6 +2,7 @@ namespace Api.Models
 
 open System
 open Core.Domain.Errors
+open Core.Domain.Types
 
 [<CLIMutable>]
 type UserRegisterInputModel = {
@@ -43,6 +44,26 @@ type UserListingOutputModel = {
     Title: string
 }
 
+[<CLIMutable>]
+type ListingOutputModel = {
+    ListingId: Guid
+    OwnerName: string
+    Author: string
+    Title: string
+    ListingStatus: ListingStatus
+}
+
+[<CLIMutable>]
+type PublishedListingsOutputModel = {
+    Listings: ListingOutputModel list
+}
+
+//[<CLIMutable>]
+//type RequestBorrowBookInputModel = {
+//    BorrowerId: Guid
+//    BookListingId: Guid 
+//}
+
 type ApiError =
     | ValidationError of ValidationError
     | DomainError of DomainError
@@ -59,6 +80,7 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
+    getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
     getByUserId: Guid -> Async<ApiResponse<UserListingOutputModel list>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

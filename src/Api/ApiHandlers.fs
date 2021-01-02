@@ -2,34 +2,46 @@ module Api.ApiHandlers
 
 open Api.CompositionRoot
 open Api.Models
-
 open Core.Domain.Errors
 open Core.Domain.Messages
 open Core.Domain.Types
-open Core.Handlers
-
 open Core.Handlers.QueryHandlers
+
 open FsToolkit.ErrorHandling
 open System
 
-let private toUserListingOutputModel (listing: QueryHandlers.UserBookListingDto): UserListingOutputModel =
-    {
-        Id = ListingId.value listing.ListingId
-        Author = listing.Author
-        Title = listing.Title
+module ModelConversions =
+    let toUserListingOutputModel (listing: UserBookListingDto): UserListingOutputModel =
+        {
+            Id = ListingId.value listing.ListingId
+            Author = listing.Author
+            Title = listing.Title
+        }
+        
+    let toPublishedListingOutputModel (listing: BookListingDto): ListingOutputModel =
+        {
+            ListingId = listing.ListingId |> ListingId.value
+            OwnerName = listing.UserName
+            Title = listing.Title
+            Author = listing.Author
+            ListingStatus = listing.Status
+        }
+        
+    let toPublishedListingsOutputModel listings: PublishedListingsOutputModel =
+        { Listings = listings }
+
+module CommandArgsConversions =
+    let toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPublishInputModel): PublishBookListingArgs = {
+        NewListingId = ListingId.create listingId
+        UserId = UserId.create listingModel.UserId 
+        Title = listingModel.Title
+        Author = listingModel.Author
     }
 
-let private toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPublishInputModel): PublishBookListingArgs = {
-    NewListingId = ListingId.create listingId
-    UserId = UserId.create listingModel.UserId 
-    Title = listingModel.Title
-    Author = listingModel.Author
-}
-
-let private toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs = {
-    UserId = UserId.create userId
-    Name = inputModel.Name
-}
+    let toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs = {
+        UserId = UserId.create userId
+        Name = inputModel.Name
+    }
 
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
@@ -44,7 +56,7 @@ let private fromAppError (appError: AppError): ApiError =
 let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
         let userId = Guid.NewGuid ()
-        let command = toRegisterUserArgs userId userModel |> Command.RegisterUser
+        let command = CommandArgsConversions.toRegisterUserArgs userId userModel |> Command.RegisterUser
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
         
         let response: UserRegisteredOutputModel = { Id = userId }
@@ -54,7 +66,7 @@ let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
 let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputModel) =
   taskResult {
       let listingId = Guid.NewGuid ()
-      let command = toPublishBookListingArgs listingId listingModel |> Command.PublishBookListing  
+      let command = CommandArgsConversions.toPublishBookListingArgs listingId listingModel |> Command.PublishBookListing  
       do! root.CommandHandler command |> TaskResult.mapError fromAppError
 
       let response: ListingPublishedOutputModel = { Id = listingId }
@@ -74,6 +86,16 @@ let getUserListings (root: CompositionRoot) (userId: Guid) =
       taskResult {
         let! listings = UserId.create userId |> root.GetUserBookListings |> TaskResult.mapError fromQueryError
         return listings
-            |> Seq.map toUserListingOutputModel
+            |> Seq.map ModelConversions.toUserListingOutputModel
             |> Seq.toList
       }
+
+let getAllPublishedListings (root: CompositionRoot) () =
+    taskResult {
+        let! listings = root.GetAllPublishedListings () |> TaskResult.mapError fromQueryError
+        
+        return listings
+             |> Seq.map ModelConversions.toPublishedListingOutputModel
+             |> Seq.toList
+             |> ModelConversions.toPublishedListingsOutputModel
+    }
