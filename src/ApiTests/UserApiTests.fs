@@ -2,7 +2,6 @@ module ApiTests.UserApiTests
 
 open Api.App
 open ApiTests.Helpers
-open ApiTests.ListingApiTests
 open Xunit
 
 type UserApiTests (factory: CustomWebApplicationFactory<Startup>) =
@@ -13,17 +12,11 @@ type UserApiTests (factory: CustomWebApplicationFactory<Startup>) =
         let client = factory.CreateClient()
 
         async {
-            let! failedLogin = UserApi.login { Name = "test" } client |> Utils.callWithResponse<ErrorResponse>
+            let! failedLogin = UserApi.login { Name = "test" } client |> Utils.callWithResponse<ApiSimpleErrorResponse>
             Assert.Equal(failedLogin.Error, "LoginFailure")
             
-            let! registeredUser =
-                UserApi.register { Name = "test" } client
-                |> Utils.callWithResponse<UserApi.UserRegisteredOutputModel>
+            let! registeredUser = UserApi.registerWithResponse { Name = "test" } client
+            let! loggedInUser = UserApi.loginWithResponse { Name = "test" } client
             
-            let! loggedInUser =
-                UserApi.login { Name = "test" } client
-                |> Utils.callWithResponse<UserApi.UserOutputModel>
-                
             Assert.Equal(registeredUser.Id, loggedInUser.UserId)
         }
-
