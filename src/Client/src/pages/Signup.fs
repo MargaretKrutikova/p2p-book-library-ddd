@@ -54,16 +54,8 @@ let update (onUserCreated: OnUserCreated) (message:Msg) (model:Model) : Model * 
 
 let signupResultMessage (result: CreateUserApiState) =
     match result with
-    | CreatedUser _ ->
-        Notification.notification [ Notification.Color IsSuccess
-                                    Notification.IsLight ] [
-            str "You are now registered!"
-        ]
-    | Error _ ->
-        Notification.notification [ Notification.Color IsDanger
-                                    Notification.IsLight ] [
-            str "An unexpected error occurred. Please try again later."
-        ]
+    | CreatedUser _ -> Notification.success "You are now registered!"
+    | Error _ -> Notification.error
     | NotAsked -> div [] []
     | Loading -> div [] []
 

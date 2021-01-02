@@ -61,16 +61,8 @@ let update (onUserLoggedIn: OnUserLoggedIn) (message: Msg) (model: Model): Model
 
 let signinResultMessage (loginResult: LoginUserApiState) =
     match loginResult with
-    | LoggedInUser _ ->
-        Notification.notification [ Notification.Color IsSuccess
-                                    Notification.IsLight ] [
-            str "Logged in successfully!"
-        ]
-    | Error _ ->
-        Notification.notification [ Notification.Color IsDanger
-                                    Notification.IsLight ] [
-            str "An unexpected error occurred. Please try again later."
-        ]
+    | LoggedInUser _ -> Notification.success "Logged in successfully!"
+    | Error _ -> Notification.error
     | NotAsked -> div [] []
     | Loading -> div [] []
 
