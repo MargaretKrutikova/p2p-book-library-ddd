@@ -40,6 +40,7 @@ module Url =
     let loginUser = "/api/user/login"
     let publishListing = "/api/listing/publish"
     let getAllListings = "/api/listing/getAllListings"
+    let getByUserId = "/api/listing/getByUserId"
 
 module Utils =
     let toStringContent (obj: obj) =
@@ -98,6 +99,12 @@ module ListingApi =
         | Available
         | RequestedToBorrow
         | Borrowed
+        
+    type UserListingOutputModel = {
+        Id: Guid
+        Author: string
+        Title: string
+    }
     type ListingOutputModel = {
         ListingId: Guid
         OwnerName: string
@@ -109,6 +116,9 @@ module ListingApi =
     type PublishedListings = {
         Listings: ListingOutputModel array
     }
+    type UserListingsOutputModel = {
+        Listings: UserListingOutputModel list
+    }
     
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
         Utils.postAsync Url.publishListing model client
@@ -119,4 +129,10 @@ module ListingApi =
     let getAllListings client = Utils.getAsync Url.getAllListings client
     let getAllListingsWithResponse client =
         getAllListings client |> Utils.callWithOk<PublishedListings>
+    
+    let getUserListings (userId: Guid) client =
+        Utils.postAsync Url.getByUserId userId client
+    
+    let getUsersListingsWithResponse userId client =
+        getUserListings userId client |> Utils.callWithOk<UserListingsOutputModel>
     
