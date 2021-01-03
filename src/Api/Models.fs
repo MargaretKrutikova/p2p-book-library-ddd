@@ -58,6 +58,11 @@ type PublishedListingsOutputModel = {
     Listings: ListingOutputModel list
 }
 
+[<CLIMutable>]
+type UserListingsOutputModel = {
+    Listings: UserListingOutputModel list
+}
+
 //[<CLIMutable>]
 //type RequestBorrowBookInputModel = {
 //    BorrowerId: Guid
@@ -81,6 +86,6 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 type IBookListingApi = {
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
-    getByUserId: Guid -> Async<ApiResponse<UserListingOutputModel list>>
+    getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

@@ -29,7 +29,10 @@ module ModelConversions =
         
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel =
         { Listings = listings }
-
+    
+    let toUserListingsOutputModel listings: UserListingsOutputModel =
+        { Listings = listings  }
+    
 module CommandArgsConversions =
     let toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPublishInputModel): PublishBookListingArgs = {
         NewListingId = ListingId.create listingId
@@ -88,6 +91,7 @@ let getUserListings (root: CompositionRoot) (userId: Guid) =
         return listings
             |> Seq.map ModelConversions.toUserListingOutputModel
             |> Seq.toList
+            |> ModelConversions.toUserListingsOutputModel
       }
 
 let getAllPublishedListings (root: CompositionRoot) () =

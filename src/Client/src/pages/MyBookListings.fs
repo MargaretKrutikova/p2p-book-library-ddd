@@ -15,7 +15,7 @@ open Fulma
 type NewBookListingInputModel = { Author: string; Title: string }
 
 type Model =
-    { MyBookListings: ApiState<UserListingOutputModel list>
+    { MyBookListings: ApiState<UserListingsOutputModel>
       PublishBookListingState: ApiState<unit>
       NewBookListing: NewBookListingInputModel }
     static member CreateDefault() =
@@ -34,7 +34,7 @@ let toPublishListingInputModel (userId: Guid) (model: Model): ListingPublishInpu
       Author = model.NewBookListing.Author }
 
 type Msg =
-    | ReceivedMyBookListings of UserListingOutputModel list
+    | ReceivedMyBookListings of UserListingsOutputModel
     | MyBookListingsError of ApiError
     | NewBookListingInputChanged of NewBookListingInputModel
     | PublishBookListingClicked
@@ -167,7 +167,7 @@ let view =
             | ApiState.NotAsked -> Html.span []
             | Loading -> Html.text "..."
             | Error _ -> Notification.error
-            | ApiState.Data listings -> listingsView listings
+            | ApiState.Data data -> listingsView data.Listings
         
         Column.column [ Column.Width(Screen.All, Column.IsFull) ] [
             publishBookListingView model dispatch
