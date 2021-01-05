@@ -11,7 +11,9 @@ module Errors =
         | BookListingNotFound
 
     type DomainError =
-        | ListingNotAvailableToBorrow
+        | ListingNotEligibleForOperation
+        | ListingAlreadyRequestedByUser
+        | CantRequestToBorrowOwnListing
         | CantBorrowBeforeRequestIsApproved
 
     type AppError =
@@ -82,7 +84,7 @@ module Messages =
           Title: string
           Author: string }
 
-    type RequestToBorrowBookArgs =
+    type RequestToBorrowListingArgs =
         { ListingId: ListingId
           BorrowerId: UserId }
 
@@ -96,13 +98,13 @@ module Messages =
     type Command =
         | RegisterUser of RegisterUserArgs
         | PublishBookListing of PublishBookListingArgs
-        | RequestToBorrowBook of RequestToBorrowBookArgs
+        | RequestToBorrowBook of RequestToBorrowListingArgs
         | BorrowBook of BorrowBookArgs
 
     [<RequireQualifiedAccess>]
     type Event =
         | BookListingPublished of ListingId
-        | RequestedToBorrowBook of ListingId * UserId
+        | ListingRequestedToBorrow of ListingId * UserId
         | BorrowedBook of ListingId * UserId
 
     [<RequireQualifiedAccess>]
@@ -137,4 +139,4 @@ module Logic =
     let borrowListing (userId: UserId) (currentStatus: ListingStatus): Result<ListingStatus, AppError> =
         match currentStatus with
         | Available -> RequestedToBorrow userId |> Ok
-        | _ -> ListingNotAvailableToBorrow |> Domain |> Error
+        | _ -> ListingNotEligibleForOperation |> Domain |> Error

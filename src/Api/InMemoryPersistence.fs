@@ -14,14 +14,13 @@ module InMemoryPersistence =
           Status = listing.Status }
 
     let private toBookListingDto (listing: BookListing) (user: UserDto): BookListingDto =
-        {
-          ListingId = listing.ListingId
+        { ListingId = listing.ListingId
           UserName = user.Name
           UserId = user.Id
           Author = listing.Author |> Author.value
           Title = listing.Title |> Title.value
           Status = listing.Status }
-    
+
     let create (): (CommandPersistenceOperations * QueryPersistenceOperations) =
         let mutable users: UserDto list = List.empty
         let mutable listings: BookListing list = List.empty
@@ -52,6 +51,18 @@ module InMemoryPersistence =
                     { Id = user.Id; Name = user.Name }: CommandPersistenceOperations.UserReadModel)
                 |> Task.FromResult
 
+        let getListingById: CommandPersistenceOperations.GetListingById =
+            fun listingId ->
+                listings
+                |> Seq.filter (fun listing -> listing.ListingId = listingId)
+                |> Seq.tryHead
+                |> Result.requireSome CommandPersistenceOperations.MissingRecord
+                |> Result.map (fun listing ->
+                    { Id = listing.ListingId
+                      OwnerId = listing.UserId
+                      ListingStatus = listing.Status }: CommandPersistenceOperations.ListingReadModel)
+                |> Task.FromResult
+
         let getAllPublishedListings: QueryPersistenceOperations.GetAllPublishedListings =
             fun () ->
                 listings
@@ -63,7 +74,7 @@ module InMemoryPersistence =
                 |> Seq.toList
                 |> Ok
                 |> Task.FromResult
-        
+
         let createListing: CommandPersistenceOperations.CreateListing =
             fun listing ->
                 listings <- listing :: listings
@@ -78,7 +89,7 @@ module InMemoryPersistence =
                 users <- user :: users
                 Task.FromResult(Ok())
 
-        let updateListing: CommandPersistenceOperations.UpdateListingStatus =
+        let updateListingStatus: CommandPersistenceOperations.UpdateListingStatus =
             fun listingId status ->
                 let updatedListings =
                     listings
@@ -90,6 +101,8 @@ module InMemoryPersistence =
 
         let commandOperations: CommandPersistenceOperations =
             { GetUserById = getUserById
+              GetListingById = getListingById
+              UpdateListingStatus = updateListingStatus
               CreateListing = createListing
               CreateUser = createUser }
 

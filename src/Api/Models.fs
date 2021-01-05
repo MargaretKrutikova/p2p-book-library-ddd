@@ -63,11 +63,11 @@ type UserListingsOutputModel = {
     Listings: UserListingOutputModel list
 }
 
-//[<CLIMutable>]
-//type RequestBorrowBookInputModel = {
-//    BorrowerId: Guid
-//    BookListingId: Guid 
-//}
+[<CLIMutable>]
+type RequestBorrowListingInputModel = {
+    BorrowerId: Guid
+    ListingId: Guid 
+}
 
 type ApiError =
     | ValidationError of ValidationError
@@ -85,6 +85,7 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
+    requestBorrowListing: RequestBorrowListingInputModel -> Async<ApiResponse<unit>>
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
     getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
 }

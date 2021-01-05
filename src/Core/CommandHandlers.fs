@@ -1,5 +1,6 @@
 module Core.Handlers.CommandHandlers
 
+open System.Data
 open System.Threading.Tasks
 open Core.Domain
 open Core.Domain.Messages
@@ -41,8 +42,10 @@ module CommandPersistenceOperations =
 
 type CommandPersistenceOperations = {
   GetUserById: CommandPersistenceOperations.GetUserById
+  GetListingById: CommandPersistenceOperations.GetListingById
   CreateListing: CommandPersistenceOperations.CreateListing
   CreateUser: CommandPersistenceOperations.CreateUser
+  UpdateListingStatus: CommandPersistenceOperations.UpdateListingStatus
 }
 
 let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserById) userId: Task<Result<unit, AppError>> =
@@ -74,19 +77,15 @@ let registerUser: RegisterUser =
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
      }
 
-type RequestToBorrowBook =
-  CommandPersistenceOperations.GetUserById
-   -> CommandPersistenceOperations.GetListingById
-   -> CommandPersistenceOperations.UpdateListingStatus
-   -> RequestToBorrowBookArgs -> CommandResult
+type RequestToBorrowBook = CommandPersistenceOperations -> RequestToBorrowListingArgs -> CommandResult
 let requestToBorrowBook: RequestToBorrowBook =
-  fun getUserById getListingById updateListingStatus args ->
+  fun persistence args ->
     taskResult {
-      do! checkUserExists getUserById args.BorrowerId
-      let! listing = getListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
+      do! checkUserExists persistence.GetUserById args.BorrowerId
+      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
       
       let! newStatus = Logic.borrowListing args.BorrowerId listing.ListingStatus
-      do! updateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
+      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
       return ()  
     }
 
@@ -95,4 +94,5 @@ let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
     match command with
     | Command.RegisterUser args -> registerUser persistence.CreateUser args
     | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
+    | Command.RequestToBorrowBook args -> requestToBorrowBook persistence args
     | _ -> failwith ""
