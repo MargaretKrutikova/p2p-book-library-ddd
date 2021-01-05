@@ -30,7 +30,7 @@ let private createBookListingApiFromContext (ctx: HttpContext): IBookListingApi 
     {
         getByUserId = getUserListings root >> taskToApiResult
         publish = publishListing root >> taskToApiResult
-        requestBorrowListing = requestBorrowListing root >> taskToApiResult
+        requestToBorrow = requestBorrowListing root >> taskToApiResult
         getAllListings = getAllPublishedListings root >> taskToApiResult
     }
 

@@ -11,17 +11,24 @@ open FsToolkit.ErrorHandling
 open System
 
 module ModelConversions =
+    let toApiListingStatus (status: ListingStatus): Api.Models.ListingStatus =
+        match status with
+        | Available -> Api.Models.Available
+        | RequestedToBorrow userId -> userId |> UserId.value |> Api.Models.RequestedToBorrow
+        | Borrowed userId -> userId |> UserId.value |> Api.Models.Borrowed
+        
     let toUserListingOutputModel (listing: UserBookListingDto): UserListingOutputModel =
         { Id = ListingId.value listing.ListingId
           Author = listing.Author
-          Title = listing.Title }
+          Title = listing.Title
+          ListingStatus = listing.Status |> toApiListingStatus}
 
     let toPublishedListingOutputModel (listing: BookListingDto): ListingOutputModel =
         { ListingId = listing.ListingId |> ListingId.value
           OwnerName = listing.UserName
           Title = listing.Title
           Author = listing.Author
-          ListingStatus = listing.Status }
+          ListingStatus = listing.Status |> toApiListingStatus }
 
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel = { Listings = listings }
 

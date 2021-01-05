@@ -2,7 +2,11 @@ namespace Api.Models
 
 open System
 open Core.Domain.Errors
-open Core.Domain.Types
+
+type ListingStatus =
+    | Available
+    | RequestedToBorrow of Guid
+    | Borrowed of Guid
 
 [<CLIMutable>]
 type UserRegisterInputModel = {
@@ -42,6 +46,7 @@ type UserListingOutputModel = {
     Id: Guid
     Author: string
     Title: string
+    ListingStatus: ListingStatus
 }
 
 [<CLIMutable>]
@@ -85,7 +90,7 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
-    requestBorrowListing: RequestBorrowListingInputModel -> Async<ApiResponse<unit>>
+    requestToBorrow: RequestBorrowListingInputModel -> Async<ApiResponse<unit>>
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
     getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
 }
