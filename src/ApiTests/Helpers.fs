@@ -39,6 +39,7 @@ module Url =
     let registerUser = "/api/user/register"
     let loginUser = "/api/user/login"
     let publishListing = "/api/listing/publish"
+    let requestToBorrowListing = "/api/listing/requestToBorrow"
     let getAllListings = "/api/listing/getAllListings"
     let getByUserId = "/api/listing/getByUserId"
 
@@ -97,13 +98,14 @@ module ListingApi =
     type ListingPublishedOutputModel = { Id: Guid }
     type ListingStatus =
         | Available
-        | RequestedToBorrow
-        | Borrowed
+        | RequestedToBorrow of Guid
+        | Borrowed of Guid
         
     type UserListingOutputModel = {
         Id: Guid
         Author: string
         Title: string
+        ListingStatus: string
     }
     type ListingOutputModel = {
         ListingId: Guid
@@ -118,6 +120,10 @@ module ListingApi =
     }
     type UserListingsOutputModel = {
         Listings: UserListingOutputModel list
+    }
+    type RequestBorrowListingInputModel = {
+        BorrowerId: Guid
+        ListingId: Guid 
     }
     
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
@@ -136,3 +142,8 @@ module ListingApi =
     let getUsersListingsWithResponse userId client =
         getUserListings userId client |> Utils.callWithOk<UserListingsOutputModel>
     
+    let requestToBorrow (model: RequestBorrowListingInputModel) client =
+        Utils.postAsync Url.requestToBorrowListing model client
+        
+    let requestToBorrowWithResponse model client =
+        requestToBorrow model client |> Utils.callWithOk<unit>
