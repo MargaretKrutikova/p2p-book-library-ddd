@@ -21,8 +21,16 @@ module CommandPersistenceOperations =
     Id: UserId
     Name: string
   }
+  
+  type ListingReadModel = {
+    Id: ListingId
+    OwnerId: UserId
+    ListingStatus: ListingStatus
+  }
+  
   type GetUserById = UserId -> DbResult<UserReadModel>
-
+  type GetListingById = ListingId -> DbResult<ListingReadModel>
+  
   type DbWriteError =
     | WriteError
 
@@ -41,6 +49,9 @@ let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserBy
   getUserById userId 
   |> TaskResult.mapError (function | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
   |> TaskResult.ignore
+
+let private mapFromDbListingError = function
+    | CommandPersistenceOperations.MissingRecord -> Validation BookListingNotFound
 
 type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
 let publishBookListing: PublishBookListing =
@@ -63,13 +74,21 @@ let registerUser: RegisterUser =
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
      }
 
-//type RequestToBorrowBook =
-//  PersistenceOperations.GetUserById -> PersistenceOperations.GetListingById -> Commands.UpdateListing -> Messages.RequestToBorrowBookArgs -> CommandResult
-//let requestToBorrowBook: RequestToBorrowBook =
-//  fun getUserById getListingById updateListing args ->
-//    taskResult {
-//      return ()  
-//    }
+type RequestToBorrowBook =
+  CommandPersistenceOperations.GetUserById
+   -> CommandPersistenceOperations.GetListingById
+   -> CommandPersistenceOperations.UpdateListingStatus
+   -> RequestToBorrowBookArgs -> CommandResult
+let requestToBorrowBook: RequestToBorrowBook =
+  fun getUserById getListingById updateListingStatus args ->
+    taskResult {
+      do! checkUserExists getUserById args.BorrowerId
+      let! listing = getListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
+      
+      let! newStatus = Logic.borrowListing args.BorrowerId listing.ListingStatus
+      do! updateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
+      return ()  
+    }
 
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->

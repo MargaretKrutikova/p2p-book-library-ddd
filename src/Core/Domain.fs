@@ -11,7 +11,7 @@ module Errors =
         | BookListingNotFound
 
     type DomainError =
-        | NotEligibleToBorrow
+        | ListingNotAvailableToBorrow
         | CantBorrowBeforeRequestIsApproved
 
     type AppError =
@@ -27,8 +27,9 @@ module Types =
 
     type ListingStatus =
         | Available
-        | RequestedToBorrow
-        | Borrowed
+        | RequestedToBorrow of UserId
+        | Borrowed of UserId
+        
     // TODO: use smart constructor
     type UserName = string
     type User = { UserId: UserId; Name: UserName }
@@ -132,3 +133,8 @@ module Logic =
 
             return bookListing
         }
+    
+    let borrowListing (userId: UserId) (currentStatus: ListingStatus): Result<ListingStatus, AppError> =
+        match currentStatus with
+        | Available -> RequestedToBorrow userId |> Ok
+        | _ -> ListingNotAvailableToBorrow |> Domain |> Error

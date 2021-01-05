@@ -52,17 +52,18 @@ module Tables =
   }
 
 module Conversions =
+    let dummyUserId = failwith "implement borrow requests with user ids of borrowers"
     let toDbListingStatus (status: ListingStatus): Tables.ListingStatus =
       match status with
       | Available -> Tables.ListingStatus.Available
-      | Borrowed -> Tables.ListingStatus.Borrowed
-      | RequestedToBorrow -> Tables.ListingStatus.RequestedToBorrow
+      | Borrowed _ -> Tables.ListingStatus.Borrowed
+      | RequestedToBorrow _ -> Tables.ListingStatus.RequestedToBorrow
     
     let fromDbListingStatus (status: Tables.ListingStatus): ListingStatus =
       match status with
       | Tables.ListingStatus.Available -> Available
-      | Tables.ListingStatus.Borrowed -> Borrowed
-      | Tables.ListingStatus.RequestedToBorrow -> RequestedToBorrow
+      | Tables.ListingStatus.Borrowed -> Borrowed dummyUserId
+      | Tables.ListingStatus.RequestedToBorrow -> RequestedToBorrow dummyUserId
       | _ -> failwith "Unknown listing status"
     
     let toDbListing (listing: BookListing): Tables.Listings =
