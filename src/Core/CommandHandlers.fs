@@ -84,7 +84,8 @@ let requestToBorrowBook: RequestToBorrowBook =
       do! checkUserExists persistence.GetUserById args.BorrowerId
       let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
       
-      let! newStatus = Logic.borrowListing args.BorrowerId listing.ListingStatus
+      let! newStatus =
+         Logic.borrowListing { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; BorrowerId =  args.BorrowerId }
       do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
       return ()  
     }

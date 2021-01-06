@@ -20,7 +20,8 @@ module Errors =
         | Validation of ValidationError
         | Domain of DomainError
         | ServiceError
-
+        static member toDomain error = Domain error
+        
 module Types =
     type UserId = private UserId of Guid
     type ListingId = private ListingId of Guid
@@ -136,7 +137,18 @@ module Logic =
             return bookListing
         }
     
-    let borrowListing (userId: UserId) (currentStatus: ListingStatus): Result<ListingStatus, AppError> =
-        match currentStatus with
-        | Available -> RequestedToBorrow userId |> Ok
-        | _ -> ListingNotEligibleForOperation |> Domain |> Error
+    type BorrowRequest = {
+        ListingStatus: ListingStatus
+        OwnerId: UserId
+        BorrowerId: UserId
+    }
+    
+    let borrowListing (request: BorrowRequest): Result<ListingStatus, AppError> =
+        if request.OwnerId = request.BorrowerId then
+            AppError.toDomain CantRequestToBorrowOwnListing |> Error
+        else
+            match request.ListingStatus with
+            | Available -> RequestedToBorrow request.BorrowerId |> Ok
+            | RequestedToBorrow borrowerId when borrowerId = request.BorrowerId ->
+                AppError.toDomain ListingAlreadyRequestedByUser |> Error
+            | _ -> AppError.toDomain ListingNotEligibleForOperation |> Error

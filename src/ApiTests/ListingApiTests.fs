@@ -1,14 +1,15 @@
-module ApiTests.ListingApiTests
+module ApiTests.ests
 
 open System
 open Api.App
 open ApiTests.Helpers
+open ApiTests.Helpers.ListingApi
 open FsToolkit.ErrorHandling
 open Xunit
 
-type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
+type ests(factory: CustomWebApplicationFactory<Startup>) =
     let getUserListingById userId listingId client =
-        ListingApi.getUsersListingsWithResponse userId client
+        getUsersListingsWithResponse userId client
         |> Async.map (fun userListings ->
             userListings.Listings
             |> Seq.filter (fun l -> l.Id = listingId)
@@ -23,7 +24,7 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
 
         async {
             let! publishErrorUser =
-                ListingApi.publish
+                publish
                     { UserId = Guid.NewGuid()
                       Author = "Test"
                       Title = "Test" }
@@ -35,7 +36,7 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             let! registeredUser = UserApi.registerWithResponse { Name = "test" } client
 
             let! publishErrorAuthor =
-                ListingApi.publish
+                publish
                     { UserId = registeredUser.Id
                       Author = ""
                       Title = "Test" }
@@ -45,7 +46,7 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             Assert.Equal("AuthorInvalid", publishErrorAuthor.Error.ValidationError)
 
             let! publishErrorTitle =
-                ListingApi.publish
+                publish
                     { UserId = registeredUser.Id
                       Author = "Test"
                       Title = "" }
@@ -62,14 +63,14 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
         async {
             let! registeredUser = UserApi.registerWithResponse { Name = "test" } client
 
-            let publishListingModel: ListingApi.ListingPublishInputModel =
+            let publishListingModel: ListingPublishInputModel =
                 { UserId = registeredUser.Id
                   Author = "Adrian Tchaikovsky"
                   Title = "Children of Time" }
 
-            let! publishedListing = ListingApi.publishWithResponse publishListingModel client
+            let! publishedListing = publishWithResponse publishListingModel client
 
-            let! model = ListingApi.getAllListingsWithResponse client
+            let! model = getAllListingsWithResponse client
 
             let listingToCheck =
                 model.Listings
@@ -88,17 +89,19 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
         async {
             let! registeredUser = UserApi.registerWithResponse { Name = "test" } client
 
-            let publishListingModel: ListingApi.ListingPublishInputModel =
+            let publishListingModel: ListingPublishInputModel =
                 { UserId = registeredUser.Id
                   Author = "Adrian Tchaikovsky"
                   Title = "Children of Time" }
 
-            let! publishedListing = ListingApi.publishWithResponse publishListingModel client
+            let! publishedListing = publishWithResponse publishListingModel client
 
             let! listingToCheck = getUserListingById registeredUser.Id publishedListing.Id client
 
             Assert.Equal("Adrian Tchaikovsky", listingToCheck.Author)
+
             Assert.Equal("Children of Time", listingToCheck.Title)
+            Assert.Equal(Available, ListingStatus.FromJson listingToCheck.ListingStatus)
         }
 
     [<Fact>]
@@ -107,21 +110,43 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
 
         async {
             let! listingOwnerUser = UserApi.registerWithResponse { Name = "owner" } client
-            let publishListingModel: ListingApi.ListingPublishInputModel =
+
+            let publishListingModel: ListingPublishInputModel =
                 { UserId = listingOwnerUser.Id
                   Author = "Adrian Tchaikovsky"
                   Title = "Children of Time" }
 
-            let! publishedListing = ListingApi.publishWithResponse publishListingModel client
-            
+            let! publishedListing = publishWithResponse publishListingModel client
+
             let! user1 = UserApi.registerWithResponse { Name = "user1" } client
+
             let! user2 = UserApi.registerWithResponse { Name = "user2" } client
 
-            do! ListingApi.requestToBorrowWithResponse
-                    { ListingId = publishedListing.Id
-                      BorrowerId = user1.Id }
-                    client
-
+            // happy path
+            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
             let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
+
             Assert.Equal("Children of Time", listingToCheck.Title)
+            Assert.Equal(RequestedToBorrow user1.Id, ListingStatus.FromJson listingToCheck.ListingStatus)
+
+            // request again by a different user
+            let! errorNotEligible =
+                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user2.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+
+            Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
+
+            // request again by a different user
+            let! errorAlreadyRequested =
+                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+
+            Assert.Equal("ListingAlreadyRequestedByUser", errorAlreadyRequested.Error.DomainError)
+
+            // request by the owner
+            let! errorAlreadyRequested =
+                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = listingOwnerUser.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+
+            Assert.Equal("CantRequestToBorrowOwnListing", errorAlreadyRequested.Error.DomainError)
         }

@@ -4,6 +4,7 @@ open System
 open System.Net.Http
 open System.Text
 open Api.App
+
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Mvc.Testing
 open Newtonsoft.Json
@@ -17,6 +18,12 @@ type ApiValidationErrorResponse = {
     Error: ValidationError
 } and ValidationError = {
     ValidationError: string
+}
+
+type ApiDomainErrorResponse = {
+    Error: DomainError
+} and DomainError = {
+    DomainError: string
 }
 
 type ApiOkResponse<'a> = {
@@ -95,24 +102,39 @@ module ListingApi =
         Title: string
     }
     
+    type RequestedToBorrow = {
+        RequestedToBorrow: Guid
+    }
+    type Borrowed = {
+        Borrowed: Guid
+    }
+    
     type ListingPublishedOutputModel = { Id: Guid }
+
     type ListingStatus =
-        | Available
-        | RequestedToBorrow of Guid
-        | Borrowed of Guid
-        
+    | Available
+    | RequestedToBorrow of Guid
+    | Borrowed of Guid
+        static member FromJson (json : obj) =
+            match json with
+            | :? string as value when value = "Available" -> Available
+            | _ as obj ->
+                let requested = JsonConvert.DeserializeObject<RequestedToBorrow>(obj.ToString())
+                RequestedToBorrow requested.RequestedToBorrow
+            | _ -> failwith "Unknown listing status"
+                       
     type UserListingOutputModel = {
         Id: Guid
         Author: string
         Title: string
-        ListingStatus: string
+        ListingStatus: obj
     }
     type ListingOutputModel = {
         ListingId: Guid
         OwnerName: string
         Author: string
         Title: string
-        ListingStatus: string
+        ListingStatus: obj
     }
     
     type PublishedListings = {
