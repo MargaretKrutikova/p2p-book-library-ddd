@@ -36,6 +36,7 @@ let navigateToSignIn () =
 let canViewIfLoggedIn route =
     match route with
     | Route.MyBookListings -> true
+    | Route.AllBookListings -> true
     | _ -> false
 
 let canViewIfLoggedOut =

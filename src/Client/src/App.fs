@@ -2,6 +2,7 @@ module Client.App
 
 open System
 open Api.Models
+open Client.Types
 open Client.Pages
 open Elmish
 open Elmish.React
@@ -10,12 +11,7 @@ open Router
 open Fulma
 open Fable.React
 open Fable.React.Props
-
-type UserId = Guid
-
-type AppUser =
-    | Anonymous
-    | LoggedIn of UserOutputModel
+open Client.Utils
 
 type State =
     { CurrentPage: Route
@@ -31,7 +27,7 @@ type Dispatch = Msg -> unit
 
 let redirectIfProtected (user: AppUser) (route: Route): Route =
     match user with
-    | Anonymous -> anonymousPageOrDefault route 
+    | Anonymous -> anonymousPageOrDefault route
     | LoggedIn _ -> loggedInPageOrDefault route
 
 let init () =
@@ -43,28 +39,30 @@ let init () =
 let update msg state =
     match msg with
     | PageChanged nextPage ->
-        let allowedPage = nextPage |> redirectIfProtected state.AppUser
+        let allowedPage =
+            nextPage |> redirectIfProtected state.AppUser
+
         { state with CurrentPage = allowedPage }, Cmd.none
     | UserCreated -> state, Cmd.ofSub (fun _ -> navigateToSignIn ())
-    | NavigateToRoute route ->
-        state, route |> urlToRoute |> Cmd.navigate 
+    | NavigateToRoute route -> state, route |> urlToRoute |> Cmd.navigate
     | UserLoggedIn user ->
         // TODO: save cookies with the logged in user name
-        { state with
-              AppUser = LoggedIn user },
-        Cmd.ofSub (fun _ -> navigateToMyBookListings ())
+        { state with AppUser = LoggedIn user }, Cmd.ofSub (fun _ -> navigateToMyBookListings ())
+    | _ -> state, Cmd.none
 
 // VIEW
 
 let navbarView (appUser: AppUser) (dispatch: Dispatch) =
     Navbar.navbar [ Navbar.CustomClass "mb-4" ] [
-        Navbar.Link.a [ Navbar.Link.IsArrowless
-                        Navbar.Link.Props [ OnClick(fun _ -> NavigateToRoute Route.Home |> dispatch) ] ] [
-            str "Home"
-        ]
-        Navbar.Link.a [ Navbar.Link.IsArrowless
-                        Navbar.Link.Props [] ] [
-            str "All books"
+        Navbar.Start.div [] [
+            Navbar.Link.a
+                [ Navbar.Link.IsArrowless
+                  Navbar.Link.Props [ OnClick(fun _ -> NavigateToRoute Route.Home |> dispatch) ] ]
+                [ str "Home" ]
+            Navbar.Link.a
+                [ Navbar.Link.IsArrowless
+                  Navbar.Link.Props [ OnClick(fun _ -> NavigateToRoute Route.AllBookListings |> dispatch) ] ]
+                [ str "All books" ]
         ]
 
         Navbar.End.div [] [
@@ -86,7 +84,7 @@ let navbarView (appUser: AppUser) (dispatch: Dispatch) =
                      [ Button.button [ Button.Color IsPrimary
                                        Button.IsLight
                                        Button.OnClick(fun _ -> NavigateToRoute Route.MyBookListings |> dispatch) ] [
-                         str "My book listings"
+                         str "My books"
                        ]
 
                        Navbar.Link.a [ Navbar.Link.IsArrowless ] [
@@ -116,6 +114,7 @@ let view model (dispatch: Msg -> unit) =
         | Route.SignUp, Anonymous -> Signup.view {| onUserCreated = handleUserCreated |}
         | Route.SignIn, Anonymous -> Signin.view {| onUserLoggedIn = handleUserLoggedIn |}
         | Route.MyBookListings, LoggedIn user -> MyBookListings.view {| userId = user.UserId |}
+        | Route.AllBookListings, appUser -> PublishedBookListings.view {| appUser = appUser |}
         | _ -> Html.h1 "Not Found"
 
     React.router [ router.onUrlChanged (parseUrl >> PageChanged >> dispatch)
