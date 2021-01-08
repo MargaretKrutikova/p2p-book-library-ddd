@@ -2,7 +2,6 @@ module Core.QueryModels
 
 open System
 open System.Threading.Tasks
-open Core.Domain.Types
 
 type QueryError =
    | InternalError   
@@ -25,7 +24,7 @@ type BookListingDto = {
    UserName: string
    Author: string
    Title: string
-   Status: ListingStatus
+   Status: ListingStatusDto
 }
 
 type UserBookListingDto = {

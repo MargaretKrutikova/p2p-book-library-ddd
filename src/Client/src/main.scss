@@ -5,3 +5,27 @@ $fa-font-path: "~@fortawesome/fontawesome-free/webfonts/";
 @import "~@fortawesome/fontawesome-free/scss/brands.scss";
 
 @import "~bulma/bulma.sass";
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.border-bottom {
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.flex-grow {
+  flex: 1 1 auto !important;
+}
+
+.flex-static {
+  flex: 0 0 auto !important;
+}
+
+.flex-column {
+  flex-direction: column;
+}

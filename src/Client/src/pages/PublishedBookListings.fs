@@ -55,7 +55,7 @@ let addBookListingResultMessage (result: ApiState<unit>) =
     | NotAsked -> div [] []
     | Loading -> div [] []
 
-let publishedBookListingView (listing: BookListingDto) =
+let publishedBookListingView dispatch (listing: BookListingDto) =
     div [ ClassName "flex flex-column" ] [
         div [] [ 
             Icon.icon 
@@ -63,17 +63,29 @@ let publishedBookListingView (listing: BookListingDto) =
                 [ i [ Style [ Color "" ]; ClassName "fa fa-lg fa-book" ] [] ]
             str (listing.Title + " " + listing.Author) 
         ]
-        div [ ] [ str "Available" ]
+        div [ ] (
+            match listing.Status with
+            | Available ->
+                [ str "Available, "
+                  a [ ClassName "is-link is-light is-text"
+                      OnClick (fun e ->
+                                   e.preventDefault ()
+                                   listing.ListingId |> RequestToBorrowBookListing |> dispatch 
+                               ) ] [ str "request to borrow" ]
+                 ]
+            | Borrowed user -> [ "Borrowed by " + user.Name |> str ] 
+            | RequestedToBorrow user -> [ "Waiting to borrow by " + user.Name |> str ] 
+        )
     ]
 
-let listingsView (model: PublishedListingsOutputModel) =
+let listingsView dispatch (model: PublishedListingsOutputModel) =
     match model.Listings with
     | [] -> Heading.h5 [ Heading.CustomClass "has-text-centered" ] [str "No published listings found"]
     | listings ->  
         Html.ul
             [ prop.children
                 (listings
-                 |> Seq.map publishedBookListingView
+                 |> Seq.map (publishedBookListingView dispatch)
                  |> Seq.toList) ]
 
 let view =
@@ -86,7 +98,7 @@ let view =
             | NotAsked -> Html.span []
             | Loading -> Html.text "..."
             | Error _ -> Notification.error
-            | ApiState.Data data -> listingsView data
+            | ApiState.Data data -> listingsView dispatch data
         
         Column.column [ Column.Width(Screen.All, Column.IsOneThird); Column.CustomClass "" ] [
             publishedListingsView
