@@ -102,19 +102,19 @@ module ListingApi =
         Title: string
     }
     
-    type RequestedToBorrow = {
-        RequestedToBorrow: Guid
-    }
-    type Borrowed = {
-        Borrowed: Guid
+     type BorrowerModel = {
+        Id: Guid
+        Name: string
     }
     
+    type RequestedToBorrow = { RequestedToBorrow: BorrowerModel }
+    type Borrowed = { Borrowed: BorrowerModel }
     type ListingPublishedOutputModel = { Id: Guid }
-
+    
     type ListingStatus =
     | Available
-    | RequestedToBorrow of Guid
-    | Borrowed of Guid
+    | RequestedToBorrow of BorrowerModel
+    | Borrowed of BorrowerModel
         static member FromJson (json : obj) =
             match json with
             | :? string as value when value = "Available" -> Available
@@ -124,17 +124,18 @@ module ListingApi =
             | _ -> failwith "Unknown listing status"
                        
     type UserListingOutputModel = {
-        Id: Guid
+        ListingId: Guid
         Author: string
         Title: string
-        ListingStatus: obj
+        Status: obj
     }
     type ListingOutputModel = {
         ListingId: Guid
+        OwnerId: Guid
         OwnerName: string
         Author: string
         Title: string
-        ListingStatus: obj
+        Status: obj
     }
     
     type PublishedListings = {

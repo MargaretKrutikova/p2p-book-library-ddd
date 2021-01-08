@@ -1,4 +1,4 @@
-module ApiTests.ests
+module ApiTests.ListingApiTests
 
 open System
 open Api.App
@@ -7,16 +7,15 @@ open ApiTests.Helpers.ListingApi
 open FsToolkit.ErrorHandling
 open Xunit
 
-type ests(factory: CustomWebApplicationFactory<Startup>) =
+type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
     let getUserListingById userId listingId client =
         getUsersListingsWithResponse userId client
         |> Async.map (fun userListings ->
             userListings.Listings
-            |> Seq.filter (fun l -> l.Id = listingId)
+            |> Seq.filter (fun l -> l.ListingId = listingId)
             |> Seq.head)
 
     interface IClassFixture<CustomWebApplicationFactory<Startup>>
-
 
     [<Fact>]
     member __.``Publish listing returns validation errors if the user doesn't exists, author or title are invalid``() =
@@ -78,7 +77,6 @@ type ests(factory: CustomWebApplicationFactory<Startup>) =
                 |> Seq.head
 
             Assert.Equal("Adrian Tchaikovsky", listingToCheck.Author)
-
             Assert.Equal("Children of Time", listingToCheck.Title)
         }
 
@@ -101,7 +99,7 @@ type ests(factory: CustomWebApplicationFactory<Startup>) =
             Assert.Equal("Adrian Tchaikovsky", listingToCheck.Author)
 
             Assert.Equal("Children of Time", listingToCheck.Title)
-            Assert.Equal(Available, ListingStatus.FromJson listingToCheck.ListingStatus)
+            Assert.Equal(Available, ListingStatus.FromJson listingToCheck.Status)
         }
 
     [<Fact>]
@@ -127,7 +125,7 @@ type ests(factory: CustomWebApplicationFactory<Startup>) =
             let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
 
             Assert.Equal("Children of Time", listingToCheck.Title)
-            Assert.Equal(RequestedToBorrow user1.Id, ListingStatus.FromJson listingToCheck.ListingStatus)
+            Assert.Equal(RequestedToBorrow { Id = user1.Id; Name = "user1" }, ListingStatus.FromJson listingToCheck.Status)
 
             // request again by a different user
             let! errorNotEligible =

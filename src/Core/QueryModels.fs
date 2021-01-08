@@ -20,8 +20,8 @@ type ListingStatusDto =
 
 type BookListingDto = {
    ListingId: Guid
-   UserId: Guid
-   UserName: string
+   OwnerId: Guid
+   OwnerName: string
    Author: string
    Title: string
    Status: ListingStatusDto
