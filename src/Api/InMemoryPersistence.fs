@@ -4,17 +4,29 @@ open System.Threading.Tasks
 open Core.Domain.Types
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
+open Core.QueryModels
 open FsToolkit.ErrorHandling
+open System
 
 module InMemoryPersistence =
-    let private toUserBookListingDto (listing: BookListing): UserBookListingDto =
-        { ListingId = listing.ListingId
+    
+    let private toBorrowerDto (user: UserDto): BorrowerDto =
+        { Id = user.Id; Name = user.Name }
+
+    let private toListingStatusDto (getUserById: UserId -> UserDto) = function 
+        | ListingStatus.Available -> Available
+        | ListingStatus.Borrowed id -> getUserById id |> toBorrowerDto |> Borrowed
+        | ListingStatus.RequestedToBorrow id -> getUserById id |> toBorrowerDto |> RequestedToBorrow
+
+    let private toUserBookListingDto (getUserById: UserId -> UserDto) (listing: BookListing): UserBookListingDto =
+        
+        { ListingId = listing.ListingId |> ListingId.value
           Author = listing.Author |> Author.value
           Title = listing.Title |> Title.value
-          Status = listing.Status }
+          Status = listing.Status |> toListingStatusDto getUserById }
 
     let private toBookListingDto (listing: BookListing) (user: UserDto): BookListingDto =
-        { ListingId = listing.ListingId
+        { ListingId = listing.ListingId |> ListingId.value
           UserName = user.Name
           UserId = user.Id
           Author = listing.Author |> Author.value
@@ -25,11 +37,16 @@ module InMemoryPersistence =
         let mutable users: UserDto list = List.empty
         let mutable listings: BookListing list = List.empty
 
+        let fetchUserById userId = 
+            users 
+            |> Seq.filter (fun user -> user.Id = (userId |> UserId.value))
+            |> Seq.head
+
         let getListingByUserId: QueryPersistenceOperations.GetListingsByUserId =
             fun userId ->
                 listings
                 |> Seq.filter (fun listing -> listing.UserId = userId)
-                |> Seq.map toUserBookListingDto
+                |> Seq.map (toUserBookListingDto fetchUserById)
                 |> Ok
                 |> Task.FromResult
 
@@ -44,11 +61,11 @@ module InMemoryPersistence =
         let getUserById: CommandPersistenceOperations.GetUserById =
             fun userId ->
                 users
-                |> Seq.filter (fun user -> user.Id = userId)
+                |> Seq.filter (fun user -> user.Id = (userId |> UserId.value))
                 |> Seq.tryHead
                 |> Result.requireSome CommandPersistenceOperations.MissingRecord
                 |> Result.map (fun user ->
-                    { Id = user.Id; Name = user.Name }: CommandPersistenceOperations.UserReadModel)
+                    { Id = user.Id |> UserId.create; Name = user.Name }: CommandPersistenceOperations.UserReadModel)
                 |> Task.FromResult
 
         let getListingById: CommandPersistenceOperations.GetListingById =
@@ -68,7 +85,7 @@ module InMemoryPersistence =
                 listings
                 |> Seq.map (fun listing ->
                     users
-                    |> Seq.filter (fun u -> u.Id = listing.UserId)
+                    |> Seq.filter (fun u -> u.Id = (listing.UserId |> UserId.value))
                     |> Seq.head
                     |> toBookListingDto listing)
                 |> Seq.toList
@@ -83,7 +100,7 @@ module InMemoryPersistence =
         let createUser: CommandPersistenceOperations.CreateUser =
             fun userModel ->
                 let user: UserDto =
-                    { Id = userModel.UserId
+                    { Id = userModel.UserId |> UserId.value
                       Name = userModel.Name }
 
                 users <- user :: users

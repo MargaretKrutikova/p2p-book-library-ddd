@@ -7,31 +7,12 @@ open Core.Domain.Messages
 open Core.Domain.Types
 open Core.Handlers.QueryHandlers
 
+open Core.QueryModels
 open FsToolkit.ErrorHandling
 open System
 
 module ModelConversions =
-    let toApiListingStatus (status: ListingStatus): Api.Models.ListingStatus =
-        match status with
-        | Available -> Api.Models.Available
-        | RequestedToBorrow userId -> userId |> UserId.value |> Api.Models.RequestedToBorrow
-        | Borrowed userId -> userId |> UserId.value |> Api.Models.Borrowed
-        
-    let toUserListingOutputModel (listing: UserBookListingDto): UserListingOutputModel =
-        { Id = ListingId.value listing.ListingId
-          Author = listing.Author
-          Title = listing.Title
-          ListingStatus = listing.Status |> toApiListingStatus}
-
-    let toPublishedListingOutputModel (listing: BookListingDto): ListingOutputModel =
-        { ListingId = listing.ListingId |> ListingId.value
-          OwnerName = listing.UserName
-          Title = listing.Title
-          Author = listing.Author
-          ListingStatus = listing.Status |> toApiListingStatus }
-
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel = { Listings = listings }
-
     let toUserListingsOutputModel listings: UserListingsOutputModel = { Listings = listings }
 
 module CommandArgsConversions =
@@ -110,7 +91,7 @@ let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
             |> Result.requireSome ApiError.LoginFailure
 
         let response: UserOutputModel =
-            { UserId = user.Id |> UserId.value
+            { UserId = user.Id 
               Name = user.Name }
 
         return response
@@ -123,10 +104,7 @@ let getUserListings (root: CompositionRoot) (userId: Guid) =
             |> root.GetUserBookListings
             |> TaskResult.mapError fromQueryError
 
-        return listings
-               |> Seq.map ModelConversions.toUserListingOutputModel
-               |> Seq.toList
-               |> ModelConversions.toUserListingsOutputModel
+        return listings |> Seq.toList |> ModelConversions.toUserListingsOutputModel
     }
 
 let getAllPublishedListings (root: CompositionRoot) () =
@@ -135,8 +113,5 @@ let getAllPublishedListings (root: CompositionRoot) () =
             root.GetAllPublishedListings()
             |> TaskResult.mapError fromQueryError
 
-        return listings
-               |> Seq.map ModelConversions.toPublishedListingOutputModel
-               |> Seq.toList
-               |> ModelConversions.toPublishedListingsOutputModel
+        return listings |> Seq.toList |> ModelConversions.toPublishedListingsOutputModel
     }

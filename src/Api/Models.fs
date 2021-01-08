@@ -2,11 +2,7 @@ namespace Api.Models
 
 open System
 open Core.Domain.Errors
-
-type ListingStatus =
-    | Available
-    | RequestedToBorrow of Guid
-    | Borrowed of Guid
+open Core.QueryModels
 
 [<CLIMutable>]
 type UserRegisterInputModel = {
@@ -42,30 +38,13 @@ type ListingPublishedOutputModel = {
 }
 
 [<CLIMutable>]
-type UserListingOutputModel = {
-    Id: Guid
-    Author: string
-    Title: string
-    ListingStatus: ListingStatus
-}
-
-[<CLIMutable>]
-type ListingOutputModel = {
-    ListingId: Guid
-    OwnerName: string
-    Author: string
-    Title: string
-    ListingStatus: ListingStatus
-}
-
-[<CLIMutable>]
 type PublishedListingsOutputModel = {
-    Listings: ListingOutputModel list
+    Listings: BookListingDto list
 }
 
 [<CLIMutable>]
 type UserListingsOutputModel = {
-    Listings: UserListingOutputModel list
+    Listings: UserBookListingDto list
 }
 
 [<CLIMutable>]

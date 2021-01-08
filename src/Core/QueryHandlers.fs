@@ -1,36 +1,11 @@
 module Core.Handlers.QueryHandlers
 
 open System.Threading.Tasks
+open Core.QueryModels
 open FsToolkit.ErrorHandling.Operator.TaskResult
 open FsToolkit.ErrorHandling
 
 open Core.Domain.Types
-
-type QueryError =
-   | InternalError   
-
-type QueryResult<'a> = Task<Result<'a, QueryError>>
-
-type BookListingDto = {
-   ListingId: ListingId
-   UserId: UserId
-   UserName: string
-   Author: string
-   Title: string
-   Status: ListingStatus
-}
-
-type UserBookListingDto = {
-   ListingId: ListingId
-   Author: string
-   Title: string
-   Status: ListingStatus
-}
-
-type UserDto = {
-    Id: UserId
-    Name: string
-}
    
 module QueryPersistenceOperations =
    type DbResult<'a> = Task<Result<'a, QueryError>>
