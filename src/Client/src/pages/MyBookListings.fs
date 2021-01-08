@@ -5,6 +5,7 @@ open Client.Utils
 open Client.Api
 
 open System
+open Core.QueryModels
 open Feliz
 open Elmish
 open Feliz.UseElmish
@@ -136,26 +137,27 @@ let publishBookListingView (model: Model) dispatch =
         ]
     ]
 
-let myBookListingView (listing: UserListingOutputModel) =
-    Columns.columns [ Columns.IsCentered
-                      Columns.IsGapless ] [
-        Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
-            Icon.icon [ Icon.Size IsSmall
-                        Icon.CustomClass "ml-1 mr-2"
-                        Icon.Props [] ] [
-                i [ Style [ Color "" ]
-                    ClassName "fa fa-lg fa-book" ] []
-            ]
-            str (listing.Title + listing.Author) 
+let myBookListingView (listing: UserBookListingDto) =
+    div [ ClassName "flex flex-column" ] [
+        div [] [ 
+            Icon.icon 
+                [ Icon.Size IsSmall; Icon.CustomClass "ml-1 mr-2" ; Icon.Props [] ] 
+                [ i [ Style [ Color "" ]; ClassName "fa fa-lg fa-book" ] [] ]
+            str (listing.Title + " " + listing.Author) 
         ]
+        div [ ] [ str "Available" ]
     ]
 
-let listingsView (listings: UserListingOutputModel list) =
-    Html.ul
-        [ prop.children
-            (listings
-             |> Seq.map myBookListingView
-             |> Seq.toList) ]
+let listingsView (model: UserListingsOutputModel) =
+    Columns.columns [ Columns.IsCentered ] [
+        Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
+            Html.ul
+                [ prop.children
+                    (model.Listings
+                     |> Seq.map myBookListingView
+                     |> Seq.toList) ]
+        ]
+    ]
 
 let view =
     React.functionComponent (fun (props: {| userId: Guid |}) ->
@@ -167,7 +169,7 @@ let view =
             | ApiState.NotAsked -> Html.span []
             | Loading -> Html.text "..."
             | Error _ -> Notification.error
-            | ApiState.Data data -> listingsView data.Listings
+            | ApiState.Data data -> listingsView data
         
         Column.column [ Column.Width(Screen.All, Column.IsFull) ] [
             publishBookListingView model dispatch
