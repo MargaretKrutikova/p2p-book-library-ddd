@@ -30,6 +30,14 @@ module CommandArgsConversions =
         { ListingId = model.ListingId |> ListingId.create
           BorrowerId = model.BorrowerId |> UserId.create }
 
+    let toApproveBorrowRequestArgs (model: ApproveBorrowRequestInputModel): ApproveBorrowBookArgs =
+        { ListingId = model.ListingId |> ListingId.create
+          OwnerId = model.OwnerId |> UserId.create }
+    
+    let toReturnListingArgs (model: ReturnListingInputModel): ReturnBookArgs =
+        { ListingId = model.ListingId |> ListingId.create
+          BorrowerId = model.BorrowerId |> UserId.create }
+    
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
     | InternalError -> ApiError.InternalError
@@ -78,6 +86,24 @@ let requestBorrowListing (root: CompositionRoot) (inputModel: RequestBorrowListi
 
         do! root.CommandHandler command
             |> TaskResult.mapError fromAppError
+    }
+
+let approveBorrowRequest (root: CompositionRoot) (inputModel: ApproveBorrowRequestInputModel) =
+    taskResult {
+        let command =
+            CommandArgsConversions.toApproveBorrowRequestArgs inputModel
+            |> Command.ApproveBorrowBookRequest
+
+        do! root.CommandHandler command |> TaskResult.mapError fromAppError
+    }
+    
+let returnListing (root: CompositionRoot) (inputModel: ReturnListingInputModel) =
+    taskResult {
+        let command =
+            CommandArgsConversions.toReturnListingArgs inputModel
+            |> Command.ReturnBook
+
+        do! root.CommandHandler command |> TaskResult.mapError fromAppError
     }
 
 let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =

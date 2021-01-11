@@ -28,9 +28,12 @@ let private createUserApiFromContext (ctx:HttpContext): IUserApi =
 let private createBookListingApiFromContext (ctx: HttpContext): IBookListingApi =
     let root = ctx.GetService<CompositionRoot>()
     {
-        getByUserId = getUserListings root >> taskToApiResult
         publish = publishListing root >> taskToApiResult
         requestToBorrow = requestBorrowListing root >> taskToApiResult
+        approveBorrowRequest = approveBorrowRequest root >> taskToApiResult
+        returnListing = returnListing root >> taskToApiResult
+        
+        getByUserId = getUserListings root >> taskToApiResult
         getAllListings = getAllPublishedListings root >> taskToApiResult
     }
 

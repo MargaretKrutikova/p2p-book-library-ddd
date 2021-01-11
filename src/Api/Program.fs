@@ -67,7 +67,7 @@ type Startup() =
         services.AddGiraffe() |> ignore
         services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
         
-    member __.Configure (app : IApplicationBuilder) (env : IHostingEnvironment) (loggerFactory : ILoggerFactory) =
+    member __.Configure (app : IApplicationBuilder) (env : IHostEnvironment) (loggerFactory : ILoggerFactory) =
         configureApp app
 
 [<EntryPoint>]

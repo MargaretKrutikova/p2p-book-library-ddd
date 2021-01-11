@@ -53,6 +53,18 @@ type RequestBorrowListingInputModel = {
     ListingId: Guid 
 }
 
+[<CLIMutable>]
+type ApproveBorrowRequestInputModel = {
+    OwnerId: Guid
+    ListingId: Guid 
+}
+
+[<CLIMutable>]
+type ReturnListingInputModel = {
+    BorrowerId: Guid
+    ListingId: Guid 
+}
+
 type ApiError =
     | ValidationError of ValidationError
     | DomainError of DomainError
@@ -68,8 +80,13 @@ type IUserApi = {
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
+    // commands
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
     requestToBorrow: RequestBorrowListingInputModel -> Async<ApiResponse<unit>>
+    approveBorrowRequest: ApproveBorrowRequestInputModel -> Async<ApiResponse<unit>>
+    returnListing: ReturnListingInputModel -> Async<ApiResponse<unit>>
+
+    // queries
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
     getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
 }

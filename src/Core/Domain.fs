@@ -88,11 +88,14 @@ module Messages =
     type RequestToBorrowListingArgs =
         { ListingId: ListingId
           BorrowerId: UserId }
-
-    type BorrowBookArgs =
-        { ListingId: ListingId
-          BorrowerId: UserId }
-
+    type ApproveBorrowBookArgs =
+        { OwnerId: UserId
+          ListingId: ListingId }
+    
+    type ReturnBookArgs =
+        { BorrowerId: UserId
+          ListingId: ListingId }
+    
     type RegisterUserArgs = { UserId: UserId; Name: string }
 
     [<RequireQualifiedAccess>]
@@ -100,7 +103,8 @@ module Messages =
         | RegisterUser of RegisterUserArgs
         | PublishBookListing of PublishBookListingArgs
         | RequestToBorrowBook of RequestToBorrowListingArgs
-        | BorrowBook of BorrowBookArgs
+        | ApproveBorrowBookRequest of ApproveBorrowBookArgs
+        | ReturnBook of ReturnBookArgs
 
     [<RequireQualifiedAccess>]
     type Event =
