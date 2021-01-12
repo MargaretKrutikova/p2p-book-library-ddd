@@ -21,12 +21,29 @@ type Msg =
     | ReceivedPublishedBookListings of PublishedListingsOutputModel
     | PublishedBookListingsError of ApiError
     | RequestToBorrowBookListing of listingId: Guid
-    | BookListingRequestedSuccessfully
+    | BookListingRequestedSuccessfully of listingId: Guid
     | BookListingRequestError of ApiError
 
 let init (): Model * Cmd<Msg> =
     { PublishedListings = Loading },
     Cmd.OfAsync.eitherAsResult bookListingApi.getAllListings () ReceivedPublishedBookListings PublishedBookListingsError
+
+let withRequestToBorrow (userId: Guid) (userName: string) (listing: BookListingDto): BookListingDto =
+    let status = ListingStatusDto.RequestedToBorrow { Id = userId; Name = userName }
+    { listing with Status = status }
+
+let updateListing (updateFn: BookListingDto -> BookListingDto) (listingId: Guid) (model: PublishedListingsOutputModel) =
+    let listings =
+        model.Listings
+        |> Seq.map (fun listing -> if listing.ListingId = listing.ListingId then updateFn listing else listing)
+        |> Seq.toList
+        
+    { model with Listings = listings }
+
+let isCurrentUser (appUser: AppUser) (userId: Guid) =
+    match appUser with
+    | Anonymous -> false
+    | LoggedIn user -> user.UserId = userId
 
 let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
@@ -42,8 +59,16 @@ let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
             Cmd.OfAsync.eitherAsResult
                 bookListingApi.requestToBorrow 
                 { ListingId = listingId; BorrowerId = user.UserId }
-                (fun _ -> BookListingRequestedSuccessfully)
+                (fun _ -> BookListingRequestedSuccessfully listingId)
                 BookListingRequestError
+    | BookListingRequestedSuccessfully listingId ->
+        match appUser with
+        | Anonymous -> model, Cmd.none
+        | LoggedIn user ->
+            let updateAfterRequest = withRequestToBorrow user.UserId user.Name
+            let apiState = updateApiState (updateListing updateAfterRequest listingId) model.PublishedListings
+            
+            { model with PublishedListings = apiState }, Cmd.none
     | _ -> model, Cmd.none
     
 // VIEW
@@ -74,7 +99,7 @@ let publishedBookListingView dispatch (listing: BookListingDto) =
                                ) ] [ str "request to borrow" ]
                  ]
             | Borrowed user -> [ "Borrowed by " + user.Name |> str ] 
-            | RequestedToBorrow user -> [ "Waiting to borrow by " + user.Name |> str ] 
+            | RequestedToBorrow user -> [ "Requested by " + user.Name |> str ] 
         )
     ]
 

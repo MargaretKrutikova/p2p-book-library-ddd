@@ -18,3 +18,8 @@ type ApiState<'a> =
     | Loading
     | Error of ApiError
     | Data of 'a
+    
+let updateApiState (update: 'a -> 'a) (state: ApiState<'a>) =
+    match state with
+    | ApiState.Data data -> update data |> Data
+    | other -> other
