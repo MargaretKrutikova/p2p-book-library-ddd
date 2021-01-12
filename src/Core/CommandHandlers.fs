@@ -1,6 +1,5 @@
 module Core.Handlers.CommandHandlers
 
-open System.Data
 open System.Threading.Tasks
 open Core.Domain
 open Core.Domain.Messages
@@ -54,7 +53,7 @@ let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserBy
   |> TaskResult.ignore
 
 let private mapFromDbListingError = function
-    | CommandPersistenceOperations.MissingRecord -> Validation BookListingNotFound
+    | CommandPersistenceOperations.MissingRecord -> Validation ListingNotFound
 
 type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
 let publishBookListing: PublishBookListing =
@@ -77,8 +76,8 @@ let registerUser: RegisterUser =
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
      }
 
-type RequestToBorrowBook = CommandPersistenceOperations -> RequestToBorrowListingArgs -> CommandResult
-let requestToBorrowBook: RequestToBorrowBook =
+type RequestToBorrowListing = CommandPersistenceOperations -> RequestToBorrowListingArgs -> CommandResult
+let requestToBorrowListing: RequestToBorrowListing =
   fun persistence args ->
     taskResult {
       do! checkUserExists persistence.GetUserById args.BorrowerId
@@ -87,13 +86,44 @@ let requestToBorrowBook: RequestToBorrowBook =
       let! newStatus =
          Logic.borrowListing { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; BorrowerId =  args.BorrowerId }
       do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
-      return ()  
     }
 
+type ApproveBorrowListingRequest = CommandPersistenceOperations -> ApproveBorrowListingArgs -> CommandResult
+let approveBorrowListingRequest: ApproveBorrowListingRequest =
+  fun persistence args ->
+    taskResult {
+      do! checkUserExists persistence.GetUserById args.ApproverId
+      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
+      
+      let! newStatus =
+         Logic.approveBorrowListingRequest
+           { ListingStatus = listing.ListingStatus
+             OwnerId = listing.OwnerId
+             ApproverId = args.ApproverId }
+           
+      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
+    }
+    
+type ReturnListing = CommandPersistenceOperations -> ReturnListingArgs -> CommandResult
+let returnListing: ReturnListing =
+  fun persistence args ->
+    taskResult {
+      do! checkUserExists persistence.GetUserById args.BorrowerId
+      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
+      
+      let! newStatus =
+         Logic.returnBookListing
+           { ListingStatus = listing.ListingStatus
+             BorrowerId = args.BorrowerId }
+           
+      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
+    }
+    
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->
     match command with
     | Command.RegisterUser args -> registerUser persistence.CreateUser args
     | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
-    | Command.RequestToBorrowBook args -> requestToBorrowBook persistence args
-    | _ -> failwith ""
+    | Command.RequestToBorrowListing args -> requestToBorrowListing persistence args
+    | Command.ApproveBorrowListingRequest args -> approveBorrowListingRequest persistence args
+    | Command.ReturnListing args -> returnListing persistence args

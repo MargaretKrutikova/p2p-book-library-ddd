@@ -8,19 +8,21 @@ module Errors =
         | TitleInvalid
         | AuthorInvalid
         | UserNotFound
-        | BookListingNotFound
+        | ListingNotFound
 
     type DomainError =
         | ListingNotEligibleForOperation
         | ListingAlreadyRequestedByUser
-        | CantRequestToBorrowOwnListing
-        | CantBorrowBeforeRequestIsApproved
+        | BorrowErrorListingIsNotAvailable 
+        | ListingIsAlreadyBorrowed
+        | ListingIsNotRequested
+        | ListingIsNotBorrowed
 
     type AppError =
         | Validation of ValidationError
         | Domain of DomainError
         | ServiceError
-        static member toDomain error = Domain error
+        static member toDomain error = Domain error |> Error
         
 module Types =
     type UserId = private UserId of Guid
@@ -88,11 +90,12 @@ module Messages =
     type RequestToBorrowListingArgs =
         { ListingId: ListingId
           BorrowerId: UserId }
-    type ApproveBorrowBookArgs =
-        { OwnerId: UserId
+        
+    type ApproveBorrowListingArgs =
+        { ApproverId: UserId
           ListingId: ListingId }
     
-    type ReturnBookArgs =
+    type ReturnListingArgs =
         { BorrowerId: UserId
           ListingId: ListingId }
     
@@ -102,15 +105,15 @@ module Messages =
     type Command =
         | RegisterUser of RegisterUserArgs
         | PublishBookListing of PublishBookListingArgs
-        | RequestToBorrowBook of RequestToBorrowListingArgs
-        | ApproveBorrowBookRequest of ApproveBorrowBookArgs
-        | ReturnBook of ReturnBookArgs
+        | RequestToBorrowListing of RequestToBorrowListingArgs
+        | ApproveBorrowListingRequest of ApproveBorrowListingArgs
+        | ReturnListing of ReturnListingArgs
 
     [<RequireQualifiedAccess>]
     type Event =
         | BookListingPublished of ListingId
         | ListingRequestedToBorrow of ListingId * UserId
-        | BorrowedBook of ListingId * UserId
+        | ListingBorrowRequestApproved of ListingId * UserId
 
     [<RequireQualifiedAccess>]
     type Query =
@@ -141,18 +144,46 @@ module Logic =
             return bookListing
         }
     
-    type BorrowRequest = {
+    type BorrowListingRequest = {
         ListingStatus: ListingStatus
         OwnerId: UserId
         BorrowerId: UserId
     }
     
-    let borrowListing (request: BorrowRequest): Result<ListingStatus, AppError> =
+    let borrowListing (request: BorrowListingRequest): Result<ListingStatus, AppError> =
         if request.OwnerId = request.BorrowerId then
-            AppError.toDomain CantRequestToBorrowOwnListing |> Error
+            AppError.toDomain ListingNotEligibleForOperation
         else
             match request.ListingStatus with
             | Available -> RequestedToBorrow request.BorrowerId |> Ok
             | RequestedToBorrow borrowerId when borrowerId = request.BorrowerId ->
-                AppError.toDomain ListingAlreadyRequestedByUser |> Error
-            | _ -> AppError.toDomain ListingNotEligibleForOperation |> Error
+                AppError.toDomain ListingAlreadyRequestedByUser
+            | RequestedToBorrow _
+            | Borrowed _ -> AppError.toDomain BorrowErrorListingIsNotAvailable
+    
+    type ApproveBorrowListingRequest = {
+        ListingStatus: ListingStatus
+        OwnerId: UserId
+        ApproverId: UserId
+    }
+    
+    let approveBorrowListingRequest (request: ApproveBorrowListingRequest): Result<ListingStatus, AppError> =
+        if request.OwnerId <> request.ApproverId then
+             AppError.toDomain ListingNotEligibleForOperation
+        else
+            match request.ListingStatus with
+            | RequestedToBorrow borrowerId -> Borrowed borrowerId |> Ok
+            | Borrowed _ -> AppError.toDomain ListingIsAlreadyBorrowed
+            | Available -> AppError.toDomain ListingIsNotRequested
+            
+    type ReturnListingRequest = {
+        ListingStatus: ListingStatus
+        BorrowerId: UserId
+    }
+    
+    let returnBookListing (request: ReturnListingRequest): Result<ListingStatus, AppError> =
+        match request.ListingStatus with
+        | Borrowed borrowerId when request.BorrowerId = borrowerId -> Available |> Ok
+        | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
+        | RequestedToBorrow _
+        | Available -> AppError.toDomain ListingIsNotBorrowed

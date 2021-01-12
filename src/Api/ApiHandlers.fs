@@ -30,11 +30,11 @@ module CommandArgsConversions =
         { ListingId = model.ListingId |> ListingId.create
           BorrowerId = model.BorrowerId |> UserId.create }
 
-    let toApproveBorrowRequestArgs (model: ApproveBorrowRequestInputModel): ApproveBorrowBookArgs =
+    let toApproveBorrowRequestArgs (model: ApproveBorrowRequestInputModel): ApproveBorrowListingArgs =
         { ListingId = model.ListingId |> ListingId.create
-          OwnerId = model.OwnerId |> UserId.create }
+          ApproverId = model.OwnerId |> UserId.create }
     
-    let toReturnListingArgs (model: ReturnListingInputModel): ReturnBookArgs =
+    let toReturnListingArgs (model: ReturnListingInputModel): ReturnListingArgs =
         { ListingId = model.ListingId |> ListingId.create
           BorrowerId = model.BorrowerId |> UserId.create }
     
@@ -82,7 +82,7 @@ let requestBorrowListing (root: CompositionRoot) (inputModel: RequestBorrowListi
     taskResult {
         let command =
             CommandArgsConversions.toRequestListingArgs inputModel
-            |> Command.RequestToBorrowBook
+            |> Command.RequestToBorrowListing
 
         do! root.CommandHandler command
             |> TaskResult.mapError fromAppError
@@ -92,7 +92,7 @@ let approveBorrowRequest (root: CompositionRoot) (inputModel: ApproveBorrowReque
     taskResult {
         let command =
             CommandArgsConversions.toApproveBorrowRequestArgs inputModel
-            |> Command.ApproveBorrowBookRequest
+            |> Command.ApproveBorrowListingRequest
 
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
     }
@@ -101,7 +101,7 @@ let returnListing (root: CompositionRoot) (inputModel: ReturnListingInputModel) 
     taskResult {
         let command =
             CommandArgsConversions.toReturnListingArgs inputModel
-            |> Command.ReturnBook
+            |> Command.ReturnListing
 
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
     }
