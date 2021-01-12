@@ -48,6 +48,7 @@ module Url =
     let publishListing = "/api/listing/publish"
     let requestToBorrowListing = "/api/listing/requestToBorrow"
     let approveBorrowRequest = "/api/listing/approveBorrowRequest"
+    let returnListing = "/api/listing/returnListing"
     let getAllListings = "/api/listing/getAllListings"
     let getByUserId = "/api/listing/getByUserId"
 
@@ -159,6 +160,10 @@ module ListingApi =
         ApproverId: Guid
         ListingId: Guid 
     }
+    type ReturnListingInputModel = {
+        BorrowerId: Guid
+        ListingId: Guid 
+    }
     
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
         Utils.postAsync Url.publishListing model client
@@ -187,3 +192,9 @@ module ListingApi =
         
     let approveBorrowRequestWithResponse model client =
         approveBorrowRequest model client |> Utils.callWithOk<unit>
+        
+    let returnListing (model: ReturnListingInputModel) client =
+        Utils.postAsync Url.returnListing model client
+        
+    let returnListingWithResponse model client =
+        returnListing model client |> Utils.callWithOk<unit>

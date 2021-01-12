@@ -187,3 +187,51 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             Assert.Equal("Children of Time", listingToCheck.Title)
             Assert.Equal(Borrowed { Id = user1.Id; Name = "user1" }, ListingStatus.FromJson listingToCheck.Status)
         }
+        
+    [<Fact>]
+    member __.``A user can returned a borrowed listing``() =
+        let client = factory.CreateClient()
+
+        async {
+            // Arrange
+            let! listingOwnerUser = UserApi.registerWithResponse { Name = "owner" } client
+            let publishListingModel: ListingPublishInputModel =
+                { UserId = listingOwnerUser.Id
+                  Author = "Adrian Tchaikovsky"
+                  Title = "Children of Time" }
+            let! publishedListing = publishWithResponse publishListingModel client
+            let! user1 = UserApi.registerWithResponse { Name = "user1" } client
+            let! user2 = UserApi.registerWithResponse { Name = "user2" } client
+
+            // listing not borrowed - available
+            let! errorAvailable =
+                returnListing { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+            
+            Assert.Equal("ListingIsNotBorrowed", errorAvailable.Error.DomainError)
+
+            // listing not borrowed - requested to borrow
+            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+            let! errorRequested =
+                returnListing { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+            
+            Assert.Equal("ListingIsNotBorrowed", errorRequested.Error.DomainError)
+            
+            do! approveBorrowRequestWithResponse { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+            
+            // return by the wrong user
+            let! errorNotEligible =
+                returnListing { ListingId = publishedListing.Id; BorrowerId = user2.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+                
+            Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
+
+            // listing is returned
+            do! returnListingWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+
+            let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
+
+            Assert.Equal("Children of Time", listingToCheck.Title)
+            Assert.Equal(Available, ListingStatus.FromJson listingToCheck.Status)
+        }
