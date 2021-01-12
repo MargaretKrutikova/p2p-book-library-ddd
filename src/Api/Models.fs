@@ -55,7 +55,7 @@ type RequestBorrowListingInputModel = {
 
 [<CLIMutable>]
 type ApproveBorrowRequestInputModel = {
-    OwnerId: Guid
+    ApproverId: Guid
     ListingId: Guid 
 }
 

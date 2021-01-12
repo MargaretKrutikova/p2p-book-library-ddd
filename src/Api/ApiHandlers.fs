@@ -32,7 +32,7 @@ module CommandArgsConversions =
 
     let toApproveBorrowRequestArgs (model: ApproveBorrowRequestInputModel): ApproveBorrowListingArgs =
         { ListingId = model.ListingId |> ListingId.create
-          ApproverId = model.OwnerId |> UserId.create }
+          ApproverId = model.ApproverId |> UserId.create }
     
     let toReturnListingArgs (model: ReturnListingInputModel): ReturnListingArgs =
         { ListingId = model.ListingId |> ListingId.create
