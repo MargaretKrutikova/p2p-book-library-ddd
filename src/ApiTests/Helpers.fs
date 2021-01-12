@@ -47,10 +47,12 @@ module Url =
     let loginUser = "/api/user/login"
     let publishListing = "/api/listing/publish"
     let requestToBorrowListing = "/api/listing/requestToBorrow"
+    let approveBorrowRequest = "/api/listing/approveBorrowRequest"
     let getAllListings = "/api/listing/getAllListings"
     let getByUserId = "/api/listing/getByUserId"
 
 module Utils =
+    let inline notNull value = not (obj.ReferenceEquals(value, null))
     let toStringContent (obj: obj) =
         new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json")
 
@@ -101,12 +103,10 @@ module ListingApi =
         Author: string
         Title: string
     }
-    
      type BorrowerModel = {
         Id: Guid
         Name: string
     }
-    
     type RequestedToBorrow = { RequestedToBorrow: BorrowerModel }
     type Borrowed = { Borrowed: BorrowerModel }
     type ListingPublishedOutputModel = { Id: Guid }
@@ -120,7 +120,13 @@ module ListingApi =
             | :? string as value when value = "Available" -> Available
             | _ as obj ->
                 let requested = JsonConvert.DeserializeObject<RequestedToBorrow>(obj.ToString())
-                RequestedToBorrow requested.RequestedToBorrow
+                match Utils.notNull requested.RequestedToBorrow with
+                | true -> RequestedToBorrow requested.RequestedToBorrow
+                | false ->
+                    let borrowed = JsonConvert.DeserializeObject<Borrowed>(obj.ToString())
+                    match Utils.notNull borrowed.Borrowed with
+                    | true -> Borrowed borrowed.Borrowed
+                    | false -> failwith "Unknown listing status"
             | _ -> failwith "Unknown listing status"
                        
     type UserListingOutputModel = {
@@ -149,6 +155,11 @@ module ListingApi =
         ListingId: Guid 
     }
     
+    type ApproveBorrowRequestInputModel = {
+        ApproverId: Guid
+        ListingId: Guid 
+    }
+    
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
         Utils.postAsync Url.publishListing model client
     
@@ -170,3 +181,9 @@ module ListingApi =
         
     let requestToBorrowWithResponse model client =
         requestToBorrow model client |> Utils.callWithOk<unit>
+        
+    let approveBorrowRequest (model: ApproveBorrowRequestInputModel) client =
+        Utils.postAsync Url.approveBorrowRequest model client
+        
+    let approveBorrowRequestWithResponse model client =
+        approveBorrowRequest model client |> Utils.callWithOk<unit>

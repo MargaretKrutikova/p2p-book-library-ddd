@@ -78,6 +78,7 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
 
             Assert.Equal("Adrian Tchaikovsky", listingToCheck.Author)
             Assert.Equal("Children of Time", listingToCheck.Title)
+            Assert.Equal(Available, ListingStatus.FromJson listingToCheck.Status)
         }
 
     [<Fact>]
@@ -97,7 +98,6 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             let! listingToCheck = getUserListingById registeredUser.Id publishedListing.Id client
 
             Assert.Equal("Adrian Tchaikovsky", listingToCheck.Author)
-
             Assert.Equal("Children of Time", listingToCheck.Title)
             Assert.Equal(Available, ListingStatus.FromJson listingToCheck.Status)
         }
@@ -132,9 +132,9 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
                 requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user2.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
 
-            Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
+            Assert.Equal("BorrowErrorListingIsNotAvailable", errorNotEligible.Error.DomainError)
 
-            // request again by a different user
+            // request again by the borrower user
             let! errorAlreadyRequested =
                 requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
@@ -146,5 +146,44 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
                 requestToBorrow { ListingId = publishedListing.Id; BorrowerId = listingOwnerUser.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
 
-            Assert.Equal("CantRequestToBorrowOwnListing", errorAlreadyRequested.Error.DomainError)
+            Assert.Equal("ListingNotEligibleForOperation", errorAlreadyRequested.Error.DomainError)
+        }
+    
+    [<Fact>]
+    member __.``A registered user can approve borrow request to his own listing``() =
+        let client = factory.CreateClient()
+
+        async {
+            // Arrange
+            let! listingOwnerUser = UserApi.registerWithResponse { Name = "owner" } client
+            let publishListingModel: ListingPublishInputModel =
+                { UserId = listingOwnerUser.Id
+                  Author = "Adrian Tchaikovsky"
+                  Title = "Children of Time" }
+            let! publishedListing = publishWithResponse publishListingModel client
+            let! user1 = UserApi.registerWithResponse { Name = "user1" } client
+            
+            // listing not requested
+            let! errorNotRequested =
+                approveBorrowRequest { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+            
+            Assert.Equal("ListingIsNotRequested", errorNotRequested.Error.DomainError)
+
+            // Act
+            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+            
+            // listing can only be approved by its owner
+            let! errorNotEligible =
+                approveBorrowRequest { ListingId = publishedListing.Id; ApproverId = user1.Id } client
+                |> Utils.callWithResponse<ApiDomainErrorResponse>
+            
+            Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
+
+            // request is approved
+            do! approveBorrowRequestWithResponse { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+            let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
+
+            Assert.Equal("Children of Time", listingToCheck.Title)
+            Assert.Equal(Borrowed { Id = user1.Id; Name = "user1" }, ListingStatus.FromJson listingToCheck.Status)
         }
