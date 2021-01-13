@@ -150,3 +150,9 @@ let getAllPublishedListings (root: CompositionRoot) () =
 
         return listings |> Seq.toList |> ModelConversions.toPublishedListingsOutputModel
     }
+
+let getUserActivity (root: CompositionRoot) (userId: Guid) =
+    userId
+    |> UserId.create
+    |> root.QueryHandler.GetUserActivity 
+    |> TaskResult.mapError fromQueryError

@@ -89,5 +89,6 @@ type IBookListingApi = {
     // queries
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
     getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
+    getUserActivity: Guid -> Async<ApiResponse<UserActivity>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

@@ -35,6 +35,7 @@ let private createBookListingApiFromContext (ctx: HttpContext): IBookListingApi 
         
         getByUserId = getUserListings root >> taskToApiResult
         getAllListings = getAllPublishedListings root >> taskToApiResult
+        getUserActivity = getUserActivity root >> taskToApiResult 
     }
 
 let createUserApiHandler () : HttpHandler = 

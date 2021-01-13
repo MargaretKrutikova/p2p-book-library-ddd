@@ -42,10 +42,10 @@ module InMemoryPersistence =
             |> Seq.filter (fun user -> user.Id = (userId |> UserId.value))
             |> Seq.head
 
-        let getListingByUserId: QueryPersistenceOperations.GetListingsByUserId =
+        let getListingByOwnerId: QueryPersistenceOperations.GetListingsByOwnerId =
             fun userId ->
                 listings
-                |> Seq.filter (fun listing -> listing.UserId = userId)
+                |> Seq.filter (fun listing -> listing.OwnerId = userId)
                 |> Seq.map (toUserBookListingDto fetchUserById)
                 |> Ok
                 |> Task.FromResult
@@ -65,7 +65,7 @@ module InMemoryPersistence =
                 |> Seq.tryHead
                 |> Option.map(fun listing ->
                     users
-                    |> Seq.filter (fun u -> u.Id = (listing.UserId |> UserId.value))
+                    |> Seq.filter (fun u -> u.Id = (listing.OwnerId |> UserId.value))
                     |> Seq.head
                     |> toBookListingDto fetchUserById listing)
                 |> Result.Ok
@@ -89,7 +89,7 @@ module InMemoryPersistence =
                 |> Result.requireSome CommandPersistenceOperations.MissingRecord
                 |> Result.map (fun listing ->
                     { Id = listing.ListingId
-                      OwnerId = listing.UserId
+                      OwnerId = listing.OwnerId
                       ListingStatus = listing.Status }: CommandPersistenceOperations.ListingReadModel)
                 |> Task.FromResult
 
@@ -98,7 +98,7 @@ module InMemoryPersistence =
                 listings
                 |> Seq.map (fun listing ->
                     users
-                    |> Seq.filter (fun u -> u.Id = (listing.UserId |> UserId.value))
+                    |> Seq.filter (fun u -> u.Id = (listing.OwnerId |> UserId.value))
                     |> Seq.head
                     |> toBookListingDto fetchUserById listing)
                 |> Seq.toList
@@ -138,7 +138,7 @@ module InMemoryPersistence =
 
         let queryOperations: QueryPersistenceOperations =
             { GetUserByName = getUserByName
-              GetListingsByUserId = getListingByUserId
+              GetListingsByUserId = getListingByOwnerId
               GetAllPublishedListings = getAllPublishedListings
               GetListingById = getListingByIdQuery }
 
