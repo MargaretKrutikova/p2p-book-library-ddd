@@ -38,3 +38,19 @@ type UserDto = {
     Id: Guid
     Name: string
 }
+
+type UserActivityListingStatus =
+    | RequestedByUser
+    | BorrowedByUser
+type UserActivityListing = {
+   ListingId: Guid
+   OwnerId: Guid
+   OwnerName: string
+   Author: string
+   Title: string
+   Status: UserActivityListingStatus
+}
+
+type UserActivity = {
+    Listings: UserActivityListing list
+}

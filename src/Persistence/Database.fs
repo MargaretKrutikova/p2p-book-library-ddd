@@ -70,7 +70,7 @@ module Conversions =
     let toDbListing (listing: BookListing): Tables.Listings =
       {
          id = listing.ListingId |> ListingId.value
-         user_id = listing.UserId |> UserId.value
+         user_id = listing.OwnerId |> UserId.value
          author = listing.Author |> Author.value
          title = listing.Title |> Title.value
          status = toDbListingStatus listing.Status
@@ -135,7 +135,7 @@ module QueryPersistenceImpl =
         Name = dbUser.name
       }
   
-  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByUserId =
+  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByOwnerId =
     fun userId ->
       select {
           table Tables.Listings.tableName

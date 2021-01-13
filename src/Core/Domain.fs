@@ -41,7 +41,7 @@ module Types =
 
     type BookListing =
         { ListingId: ListingId
-          UserId: UserId
+          OwnerId: UserId
           Author: Author
           Title: Title
           Status: ListingStatus }
@@ -136,7 +136,7 @@ module Logic =
 
             let bookListing: BookListing =
                 { ListingId = dto.NewListingId
-                  UserId = dto.UserId
+                  OwnerId = dto.UserId
                   Author = author
                   Title = title
                   Status = Available }
