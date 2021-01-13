@@ -82,9 +82,9 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 type IBookListingApi = {
     // commands
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
-    requestToBorrow: RequestBorrowListingInputModel -> Async<ApiResponse<unit>>
-    approveBorrowRequest: ApproveBorrowRequestInputModel -> Async<ApiResponse<unit>>
-    returnListing: ReturnListingInputModel -> Async<ApiResponse<unit>>
+    requestToBorrow: RequestBorrowListingInputModel -> Async<ApiResponse<BookListingDto>>
+    approveBorrowRequest: ApproveBorrowRequestInputModel -> Async<ApiResponse<BookListingDto>>
+    returnListing: ReturnListingInputModel -> Async<ApiResponse<BookListingDto>>
 
     // queries
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>

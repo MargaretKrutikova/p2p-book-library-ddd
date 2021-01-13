@@ -27,8 +27,8 @@ module InMemoryPersistence =
 
     let private toBookListingDto (getUserById: UserId -> UserDto) (listing: BookListing) (user: UserDto): BookListingDto =
         { ListingId = listing.ListingId |> ListingId.value
-          UserName = user.Name
-          UserId = user.Id
+          OwnerName = user.Name
+          OwnerId = user.Id
           Author = listing.Author |> Author.value
           Title = listing.Title |> Title.value
           Status = listing.Status |> toListingStatusDto getUserById }
@@ -58,6 +58,19 @@ module InMemoryPersistence =
                 |> Result.Ok
                 |> Task.FromResult
 
+        let getListingByIdQuery: QueryPersistenceOperations.GetListingById =
+            fun listingId ->
+                listings
+                |> Seq.filter (fun listing -> listing.ListingId = listingId)
+                |> Seq.tryHead
+                |> Option.map(fun listing ->
+                    users
+                    |> Seq.filter (fun u -> u.Id = (listing.UserId |> UserId.value))
+                    |> Seq.head
+                    |> toBookListingDto fetchUserById listing)
+                |> Result.Ok
+                |> Task.FromResult
+        
         let getUserById: CommandPersistenceOperations.GetUserById =
             fun userId ->
                 users
@@ -126,6 +139,7 @@ module InMemoryPersistence =
         let queryOperations: QueryPersistenceOperations =
             { GetUserByName = getUserByName
               GetListingsByUserId = getListingByUserId
-              GetAllPublishedListings = getAllPublishedListings }
+              GetAllPublishedListings = getAllPublishedListings
+              GetListingById = getListingByIdQuery }
 
         (commandOperations, queryOperations)

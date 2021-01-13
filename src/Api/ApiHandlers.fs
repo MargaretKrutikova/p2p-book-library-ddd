@@ -10,6 +10,7 @@ open Core.Handlers.QueryHandlers
 open Core.QueryModels
 open FsToolkit.ErrorHandling
 open System
+open FsToolkit.ErrorHandling.Operator.TaskResult
 
 module ModelConversions =
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel = { Listings = listings }
@@ -48,6 +49,13 @@ let private fromAppError (appError: AppError): ApiError =
     | Domain error -> DomainError error
     | ServiceError -> ApiError.InternalError
 
+let private getExistingListingById (queryHandler: QueryHandler) listingId =
+    listingId
+    |> ListingId.create
+    |> queryHandler.GetListingById
+    |> TaskResult.mapError fromQueryError
+    |> Task.map (Result.bind (Result.requireSome ApiError.InternalError))
+    
 let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
         let userId = Guid.NewGuid()
@@ -81,11 +89,10 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
 let requestBorrowListing (root: CompositionRoot) (inputModel: RequestBorrowListingInputModel) =
     taskResult {
         let command =
-            CommandArgsConversions.toRequestListingArgs inputModel
-            |> Command.RequestToBorrowListing
+            CommandArgsConversions.toRequestListingArgs inputModel |> Command.RequestToBorrowListing
 
-        do! root.CommandHandler command
-            |> TaskResult.mapError fromAppError
+        do! root.CommandHandler command |> TaskResult.mapError fromAppError
+        return! getExistingListingById root.QueryHandler inputModel.ListingId
     }
 
 let approveBorrowRequest (root: CompositionRoot) (inputModel: ApproveBorrowRequestInputModel) =
@@ -95,6 +102,7 @@ let approveBorrowRequest (root: CompositionRoot) (inputModel: ApproveBorrowReque
             |> Command.ApproveBorrowListingRequest
 
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
+        return! getExistingListingById root.QueryHandler inputModel.ListingId
     }
     
 let returnListing (root: CompositionRoot) (inputModel: ReturnListingInputModel) =
@@ -104,12 +112,13 @@ let returnListing (root: CompositionRoot) (inputModel: ReturnListingInputModel) 
             |> Command.ReturnListing
 
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
+        return! getExistingListingById root.QueryHandler inputModel.ListingId
     }
 
 let loginUser (root: CompositionRoot) (userModel: UserLoginInputModel) =
     taskResult {
         let! userOption =
-            root.GetUserByName userModel.Name
+            root.QueryHandler.GetUserByName userModel.Name
             |> TaskResult.mapError (fun _ -> ApiError.LoginFailure)
 
         let! user =
@@ -127,7 +136,7 @@ let getUserListings (root: CompositionRoot) (userId: Guid) =
     taskResult {
         let! listings =
             UserId.create userId
-            |> root.GetUserBookListings
+            |> root.QueryHandler.GetUserBookListings
             |> TaskResult.mapError fromQueryError
 
         return listings |> Seq.toList |> ModelConversions.toUserListingsOutputModel
@@ -136,7 +145,7 @@ let getUserListings (root: CompositionRoot) (userId: Guid) =
 let getAllPublishedListings (root: CompositionRoot) () =
     taskResult {
         let! listings =
-            root.GetAllPublishedListings()
+            root.QueryHandler.GetAllPublishedBookListings()
             |> TaskResult.mapError fromQueryError
 
         return listings |> Seq.toList |> ModelConversions.toPublishedListingsOutputModel

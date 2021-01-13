@@ -5,15 +5,11 @@ open Core.Handlers.QueryHandlers
 
 type CompositionRoot = {
     CommandHandler: CommandHandler
-    GetAllPublishedListings: GetAllPublishedBookListings
-    GetUserBookListings: GetUserBookListings
-    GetUserByName: GetUserByName
+    QueryHandler: QueryHandler
 }
 
 let compose (commandPersistence: CommandPersistenceOperations) (queryPersistence: QueryPersistenceOperations): CompositionRoot = 
   {
       CommandHandler = handleCommand commandPersistence
-      GetAllPublishedListings = getAllPublishedBookListings queryPersistence.GetAllPublishedListings
-      GetUserBookListings = getUserBookListings queryPersistence.GetListingsByUserId
-      GetUserByName = getUserByName queryPersistence.GetUserByName
+      QueryHandler = createQueryHandler queryPersistence
   }
