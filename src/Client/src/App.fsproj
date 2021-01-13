@@ -11,6 +11,7 @@
     <Compile Include="pages/Signup.fs" />
     <Compile Include="pages/Signin.fs" />
     <Compile Include="pages\PublishedBookListings.fs" />
+    <Compile Include="pages\MyActivity.fs" />
     
     <Compile Include="Router.fs" />
     <Compile Include="App.fs" />

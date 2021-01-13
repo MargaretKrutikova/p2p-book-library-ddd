@@ -83,10 +83,14 @@ let navbarView (appUser: AppUser) (dispatch: Dispatch) =
                  | LoggedIn user ->
                      [ Button.button [ Button.Color IsPrimary
                                        Button.IsLight
+                                       Button.CustomClass "mr-3"
                                        Button.OnClick(fun _ -> NavigateToRoute Route.MyBookListings |> dispatch) ] [
                          str "My books"
                        ]
-
+                       Button.button [ Button.Color IsGrey
+                                       Button.OnClick(fun _ -> NavigateToRoute Route.MyActivity |> dispatch) ] [
+                         str "My activity"
+                       ]
                        Navbar.Link.a [ Navbar.Link.IsArrowless ] [
                            "Logged in as " + user.Name |> str
                        ] ])
@@ -115,6 +119,7 @@ let view model (dispatch: Msg -> unit) =
         | Route.SignIn, Anonymous -> Signin.view {| onUserLoggedIn = handleUserLoggedIn |}
         | Route.MyBookListings, LoggedIn user -> MyBookListings.view {| userId = user.UserId |}
         | Route.AllBookListings, appUser -> PublishedBookListings.view {| appUser = appUser |}
+        | Route.MyActivity, LoggedIn user -> MyActivity.view {| userId = user.UserId |}        
         | _ -> Html.h1 "Not Found"
 
     React.router [ router.onUrlChanged (parseUrl >> PageChanged >> dispatch)
