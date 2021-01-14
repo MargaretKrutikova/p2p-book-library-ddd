@@ -26,19 +26,24 @@ module CommandArgsConversions =
     let toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs =
         { UserId = UserId.create userId
           Name = inputModel.Name }
-
-    let toRequestListingArgs (model: RequestBorrowListingInputModel): RequestToBorrowListingArgs =
-        { ListingId = model.ListingId |> ListingId.create
-          BorrowerId = model.BorrowerId |> UserId.create }
-
-    let toApproveBorrowRequestArgs (model: ApproveBorrowRequestInputModel): ApproveBorrowListingArgs =
-        { ListingId = model.ListingId |> ListingId.create
-          ApproverId = model.ApproverId |> UserId.create }
     
-    let toReturnListingArgs (model: ReturnListingInputModel): ReturnListingArgs =
-        { ListingId = model.ListingId |> ListingId.create
-          BorrowerId = model.BorrowerId |> UserId.create }
-    
+    let private toChangeListingStatusArgs' (date: DateTime) (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
+        { UserId = userId |> UserId.create; ListingId = ListingId.create listingId; DateTime = date; Command = command }
+
+    let toChangeListingStatusArgs (date: DateTime) (inputModel: ChangeListingStatusInputModel): ChangeListingStatusArgs =
+        let command =
+            match inputModel.Command with
+            | ChangeListingStatusInputCommand.RequestToBorrow ->
+                ChangeListingStatusCommand.RequestToBorrow 
+            | ChangeListingStatusInputCommand.CancelRequestToBorrow ->
+                ChangeListingStatusCommand.CancelRequestToBorrow 
+            | ChangeListingStatusInputCommand.ApproveRequestToBorrow ->
+                ChangeListingStatusCommand.ApproveRequestToBorrow 
+            | ChangeListingStatusInputCommand.ReturnListing ->
+                ChangeListingStatusCommand.ReturnListing 
+        
+        toChangeListingStatusArgs' date inputModel.ListingId inputModel.UserId command
+        
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
     | InternalError -> ApiError.InternalError
@@ -54,7 +59,6 @@ let private getExistingListingById (queryHandler: QueryHandler) listingId =
     |> ListingId.create
     |> queryHandler.GetListingById
     |> TaskResult.mapError fromQueryError
-    |> Task.map (Result.bind (Result.requireSome ApiError.InternalError))
     
 let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
@@ -85,31 +89,13 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
         let response: ListingPublishedOutputModel = { Id = listingId }
         return response
     }
-
-let requestBorrowListing (root: CompositionRoot) (inputModel: RequestBorrowListingInputModel) =
-    taskResult {
-        let command =
-            CommandArgsConversions.toRequestListingArgs inputModel |> Command.RequestToBorrowListing
-
-        do! root.CommandHandler command |> TaskResult.mapError fromAppError
-        return! getExistingListingById root.QueryHandler inputModel.ListingId
-    }
-
-let approveBorrowRequest (root: CompositionRoot) (inputModel: ApproveBorrowRequestInputModel) =
-    taskResult {
-        let command =
-            CommandArgsConversions.toApproveBorrowRequestArgs inputModel
-            |> Command.ApproveBorrowListingRequest
-
-        do! root.CommandHandler command |> TaskResult.mapError fromAppError
-        return! getExistingListingById root.QueryHandler inputModel.ListingId
-    }
     
-let returnListing (root: CompositionRoot) (inputModel: ReturnListingInputModel) =
+let changeListingStatus (root: CompositionRoot) (inputModel: ChangeListingStatusInputModel) =
     taskResult {
+        let date = DateTime.UtcNow
         let command =
-            CommandArgsConversions.toReturnListingArgs inputModel
-            |> Command.ReturnListing
+            CommandArgsConversions.toChangeListingStatusArgs date inputModel
+            |> Command.ChangeListingStatus
 
         do! root.CommandHandler command |> TaskResult.mapError fromAppError
         return! getExistingListingById root.QueryHandler inputModel.ListingId

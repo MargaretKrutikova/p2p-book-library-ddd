@@ -76,54 +76,27 @@ let registerUser: RegisterUser =
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
      }
 
-type RequestToBorrowListing = CommandPersistenceOperations -> RequestToBorrowListingArgs -> CommandResult
-let requestToBorrowListing: RequestToBorrowListing =
-  fun persistence args ->
-    taskResult {
-      do! checkUserExists persistence.GetUserById args.BorrowerId
-      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
-      
-      let! newStatus =
-         Logic.borrowListing { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; BorrowerId =  args.BorrowerId }
-      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
-    }
-
-type ApproveBorrowListingRequest = CommandPersistenceOperations -> ApproveBorrowListingArgs -> CommandResult
-let approveBorrowListingRequest: ApproveBorrowListingRequest =
-  fun persistence args ->
-    taskResult {
-      do! checkUserExists persistence.GetUserById args.ApproverId
-      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
-      
-      let! newStatus =
-         Logic.approveBorrowListingRequest
-           { ListingStatus = listing.ListingStatus
-             OwnerId = listing.OwnerId
-             ApproverId = args.ApproverId }
-           
-      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
-    }
-    
-type ReturnListing = CommandPersistenceOperations -> ReturnListingArgs -> CommandResult
-let returnListing: ReturnListing =
-  fun persistence args ->
-    taskResult {
-      do! checkUserExists persistence.GetUserById args.BorrowerId
-      let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
-      
-      let! newStatus =
-         Logic.returnBookListing
-           { ListingStatus = listing.ListingStatus
-             BorrowerId = args.BorrowerId }
-           
-      do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
-    }
+let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs) =
+   taskResult {
+       do! checkUserExists persistence.GetUserById args.UserId
+       let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
+       let! newStatus =
+         match args.Command with
+         | RequestToBorrow ->
+            Logic.requestBorrowListing { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; BorrowerId = args.UserId }
+         | CancelRequestToBorrow ->
+            Logic.cancelRequestToBorrow { ListingStatus = listing.ListingStatus; BorrowerId =  args.UserId }
+         | ApproveRequestToBorrow ->
+            Logic.approveBorrowListingRequest { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; ApproverId = args.UserId }
+         | ReturnListing ->
+            Logic.returnBookListing { ListingStatus = listing.ListingStatus; BorrowerId = args.UserId }
+       
+       do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
+   }
     
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
   fun command ->
     match command with
     | Command.RegisterUser args -> registerUser persistence.CreateUser args
     | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
-    | Command.RequestToBorrowListing args -> requestToBorrowListing persistence args
-    | Command.ApproveBorrowListingRequest args -> approveBorrowListingRequest persistence args
-    | Command.ReturnListing args -> returnListing persistence args
+    | Command.ChangeListingStatus args -> changeListingStatus persistence args

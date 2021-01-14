@@ -47,24 +47,6 @@ type UserListingsOutputModel = {
     Listings: UserBookListingDto list
 }
 
-[<CLIMutable>]
-type RequestBorrowListingInputModel = {
-    BorrowerId: Guid
-    ListingId: Guid 
-}
-
-[<CLIMutable>]
-type ApproveBorrowRequestInputModel = {
-    ApproverId: Guid
-    ListingId: Guid 
-}
-
-[<CLIMutable>]
-type ReturnListingInputModel = {
-    BorrowerId: Guid
-    ListingId: Guid 
-}
-
 type ApiError =
     | ValidationError of ValidationError
     | DomainError of DomainError
@@ -72,6 +54,17 @@ type ApiError =
     | LoginFailure
 
 type ApiResponse<'a> = Result<'a, ApiError>
+
+type ChangeListingStatusInputCommand =
+    | RequestToBorrow
+    | CancelRequestToBorrow
+    | ApproveRequestToBorrow
+    | ReturnListing
+type ChangeListingStatusInputModel = {
+    UserId: Guid
+    ListingId: Guid
+    Command: ChangeListingStatusInputCommand
+}
 
 type IUserApi = {
     register: UserRegisterInputModel -> Async<ApiResponse<UserRegisteredOutputModel>>
@@ -82,9 +75,7 @@ with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 type IBookListingApi = {
     // commands
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
-    requestToBorrow: RequestBorrowListingInputModel -> Async<ApiResponse<BookListingDto>>
-    approveBorrowRequest: ApproveBorrowRequestInputModel -> Async<ApiResponse<BookListingDto>>
-    returnListing: ReturnListingInputModel -> Async<ApiResponse<BookListingDto>>
+    changeListingStatus: ChangeListingStatusInputModel -> Async<ApiResponse<BookListingDto option>>
 
     // queries
     getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>

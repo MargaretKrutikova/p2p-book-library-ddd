@@ -87,27 +87,24 @@ module Messages =
           Title: string
           Author: string }
 
-    type RequestToBorrowListingArgs =
-        { ListingId: ListingId
-          BorrowerId: UserId }
-        
-    type ApproveBorrowListingArgs =
-        { ApproverId: UserId
-          ListingId: ListingId }
-    
-    type ReturnListingArgs =
-        { BorrowerId: UserId
-          ListingId: ListingId }
-    
     type RegisterUserArgs = { UserId: UserId; Name: string }
-
+    type ChangeListingStatusCommand =
+        | RequestToBorrow
+        | CancelRequestToBorrow
+        | ApproveRequestToBorrow
+        | ReturnListing
+    type ChangeListingStatusArgs = {
+        UserId: UserId
+        ListingId: ListingId
+        DateTime: DateTime
+        Command: ChangeListingStatusCommand
+    }
+    
     [<RequireQualifiedAccess>]
     type Command =
         | RegisterUser of RegisterUserArgs
         | PublishBookListing of PublishBookListingArgs
-        | RequestToBorrowListing of RequestToBorrowListingArgs
-        | ApproveBorrowListingRequest of ApproveBorrowListingArgs
-        | ReturnListing of ReturnListingArgs
+        | ChangeListingStatus of ChangeListingStatusArgs
 
     [<RequireQualifiedAccess>]
     type Event =
@@ -150,7 +147,7 @@ module Logic =
         BorrowerId: UserId
     }
     
-    let borrowListing (request: BorrowListingRequest): Result<ListingStatus, AppError> =
+    let requestBorrowListing (request: BorrowListingRequest): Result<ListingStatus, AppError> =
         if request.OwnerId = request.BorrowerId then
             AppError.toDomain ListingNotEligibleForOperation
         else
@@ -160,6 +157,14 @@ module Logic =
                 AppError.toDomain ListingAlreadyRequestedByUser
             | RequestedToBorrow _
             | Borrowed _ -> AppError.toDomain BorrowErrorListingIsNotAvailable
+    
+    type CancelListingRequest = {
+        ListingStatus: ListingStatus
+        BorrowerId: UserId
+    }
+    
+    let cancelRequestToBorrow (request: CancelListingRequest): Result<ListingStatus, AppError> =
+        request.ListingStatus |> Ok
     
     type ApproveBorrowListingRequest = {
         ListingStatus: ListingStatus

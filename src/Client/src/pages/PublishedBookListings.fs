@@ -21,7 +21,7 @@ type Msg =
     | ReceivedPublishedBookListings of PublishedListingsOutputModel
     | PublishedBookListingsError of ApiError
     | RequestToBorrowBookListing of listingId: Guid
-    | BookListingRequestedSuccessfully of listingId: Guid
+    | BookListingRequestedSuccessfully of updatedListing: BookListingDto option
     | BookListingRequestError of ApiError
 
 let init (): Model * Cmd<Msg> =
@@ -57,18 +57,19 @@ let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
         | LoggedIn user ->
             model,
             Cmd.OfAsync.eitherAsResult
-                bookListingApi.requestToBorrow 
-                { ListingId = listingId; BorrowerId = user.UserId }
-                (fun _ -> BookListingRequestedSuccessfully listingId)
+                bookListingApi.changeListingStatus 
+                { ListingId = listingId; Command = ChangeListingStatusInputCommand.RequestToBorrow; UserId = user.UserId }
+                BookListingRequestedSuccessfully
                 BookListingRequestError
-    | BookListingRequestedSuccessfully listingId ->
-        match appUser with
-        | Anonymous -> model, Cmd.none
-        | LoggedIn user ->
-            let updateAfterRequest = withRequestToBorrow user.UserId user.Name
-            let apiState = updateApiState (updateListing updateAfterRequest listingId) model.PublishedListings
+    | BookListingRequestedSuccessfully updatedListing ->
+        match appUser, updatedListing with
+        | LoggedIn user, Some updatedListing ->
+            let updateAfterRequest = fun _ -> updatedListing
+            let apiState = updateApiState (updateListing updateAfterRequest updatedListing.ListingId) model.PublishedListings
             
             { model with PublishedListings = apiState }, Cmd.none
+        | _, _ -> model, Cmd.none
+
     | _ -> model, Cmd.none
     
 // VIEW
