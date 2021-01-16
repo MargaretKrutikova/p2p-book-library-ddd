@@ -121,29 +121,31 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             let! user2 = UserApi.registerWithResponse { Name = "user2" } client
 
             // happy path
-            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+            let inputCommand = { ListingId = publishedListing.Id; UserId = user1.Id; Command = ChangeListingStatusInputCommand.ToJson RequestToBorrow }
+            let! _ = changeListingStatusWithResponse inputCommand client
             let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
 
             Assert.Equal("Children of Time", listingToCheck.Title)
             Assert.Equal(RequestedToBorrow { Id = user1.Id; Name = "user1" }, ListingStatus.FromJson listingToCheck.Status)
 
             // request again by a different user
+
             let! errorNotEligible =
-                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user2.Id } client
+                changeListingStatus { inputCommand with UserId = user2.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
 
             Assert.Equal("BorrowErrorListingIsNotAvailable", errorNotEligible.Error.DomainError)
 
             // request again by the borrower user
             let! errorAlreadyRequested =
-                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                changeListingStatus { inputCommand with UserId = user1.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
 
             Assert.Equal("ListingAlreadyRequestedByUser", errorAlreadyRequested.Error.DomainError)
 
             // request by the owner
             let! errorAlreadyRequested =
-                requestToBorrow { ListingId = publishedListing.Id; BorrowerId = listingOwnerUser.Id } client
+                changeListingStatus { inputCommand with UserId = listingOwnerUser.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
 
             Assert.Equal("ListingNotEligibleForOperation", errorAlreadyRequested.Error.DomainError)
@@ -163,25 +165,31 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             let! publishedListing = publishWithResponse publishListingModel client
             let! user1 = UserApi.registerWithResponse { Name = "user1" } client
             
+            let inputCommand = { ListingId = publishedListing.Id; UserId = listingOwnerUser.Id; Command = ChangeListingStatusInputCommand.ToJson ApproveRequestToBorrow }
+
             // listing not requested
             let! errorNotRequested =
-                approveBorrowRequest { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+                changeListingStatus inputCommand client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
             
             Assert.Equal("ListingIsNotRequested", errorNotRequested.Error.DomainError)
 
             // Act
-            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
-            
+            let! _ = changeListingStatusWithResponse
+                      {
+                        ListingId = publishedListing.Id
+                        UserId = user1.Id
+                        Command = ChangeListingStatusInputCommand.ToJson RequestToBorrow } client
+                
             // listing can only be approved by its owner
             let! errorNotEligible =
-                approveBorrowRequest { ListingId = publishedListing.Id; ApproverId = user1.Id } client
+                changeListingStatus { inputCommand with UserId = user1.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
             
             Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
 
             // request is approved
-            do! approveBorrowRequestWithResponse { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+            let! _ = changeListingStatusWithResponse { inputCommand with UserId = listingOwnerUser.Id } client
             let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
 
             Assert.Equal("Children of Time", listingToCheck.Title)
@@ -203,32 +211,39 @@ type ListingApiTests(factory: CustomWebApplicationFactory<Startup>) =
             let! user1 = UserApi.registerWithResponse { Name = "user1" } client
             let! user2 = UserApi.registerWithResponse { Name = "user2" } client
 
+            let inputCommand = { ListingId = publishedListing.Id; UserId = user1.Id; Command = ChangeListingStatusInputCommand.ToJson ReturnListing }
+
             // listing not borrowed - available
             let! errorAvailable =
-                returnListing { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                changeListingStatus inputCommand client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
             
             Assert.Equal("ListingIsNotBorrowed", errorAvailable.Error.DomainError)
 
             // listing not borrowed - requested to borrow
-            do! requestToBorrowWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+            let! _ = changeListingStatusWithResponse { inputCommand with Command = ChangeListingStatusInputCommand.ToJson RequestToBorrow } client
             let! errorRequested =
-                returnListing { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+                changeListingStatus { inputCommand with UserId = user1.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
             
             Assert.Equal("ListingIsNotBorrowed", errorRequested.Error.DomainError)
             
-            do! approveBorrowRequestWithResponse { ListingId = publishedListing.Id; ApproverId = listingOwnerUser.Id } client
+            let! _ =
+                  changeListingStatusWithResponse
+                    { ListingId = publishedListing.Id
+                      UserId = listingOwnerUser.Id
+                      Command = ChangeListingStatusInputCommand.ToJson ApproveRequestToBorrow }
+                    client
             
             // return by the wrong user
             let! errorNotEligible =
-                returnListing { ListingId = publishedListing.Id; BorrowerId = user2.Id } client
+                changeListingStatus { inputCommand with UserId = user2.Id } client
                 |> Utils.callWithResponse<ApiDomainErrorResponse>
                 
             Assert.Equal("ListingNotEligibleForOperation", errorNotEligible.Error.DomainError)
 
             // listing is returned
-            do! returnListingWithResponse { ListingId = publishedListing.Id; BorrowerId = user1.Id } client
+            let! _ = changeListingStatusWithResponse inputCommand client
 
             let! listingToCheck = getUserListingById listingOwnerUser.Id publishedListing.Id client
 

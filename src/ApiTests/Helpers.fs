@@ -46,9 +46,7 @@ module Url =
     let registerUser = "/api/user/register"
     let loginUser = "/api/user/login"
     let publishListing = "/api/listing/publish"
-    let requestToBorrowListing = "/api/listing/requestToBorrow"
-    let approveBorrowRequest = "/api/listing/approveBorrowRequest"
-    let returnListing = "/api/listing/returnListing"
+    let changeListingStatus = "/api/listing/changeListingStatus"
     let getAllListings = "/api/listing/getAllListings"
     let getByUserId = "/api/listing/getByUserId"
 
@@ -151,18 +149,21 @@ module ListingApi =
     type UserListingsOutputModel = {
         Listings: UserListingOutputModel list
     }
-    type RequestBorrowListingInputModel = {
-        BorrowerId: Guid
-        ListingId: Guid 
-    }
-    
-    type ApproveBorrowRequestInputModel = {
-        ApproverId: Guid
-        ListingId: Guid 
-    }
-    type ReturnListingInputModel = {
-        BorrowerId: Guid
-        ListingId: Guid 
+    type ChangeListingStatusInputCommand =
+        | RequestToBorrow
+        | CancelRequestToBorrow
+        | ApproveRequestToBorrow
+        | ReturnListing
+        static member ToJson (command : ChangeListingStatusInputCommand) =
+            match command with
+            | RequestToBorrow -> "RequestToBorrow"
+            | CancelRequestToBorrow -> "CancelRequestToBorrow"
+            | ApproveRequestToBorrow -> "ApproveRequestToBorrow"
+            | ReturnListing -> "ReturnListing"
+    type ChangeListingStatusInputModel = {
+        UserId: Guid
+        ListingId: Guid
+        Command: string
     }
     
     let publish (model: ListingPublishInputModel) (client: HttpClient) =
@@ -181,20 +182,8 @@ module ListingApi =
     let getUsersListingsWithResponse userId client =
         getUserListings userId client |> Utils.callWithOk<UserListingsOutputModel>
     
-    let requestToBorrow (model: RequestBorrowListingInputModel) client =
-        Utils.postAsync Url.requestToBorrowListing model client
+    let changeListingStatus (model: ChangeListingStatusInputModel) client =
+        Utils.postAsync Url.changeListingStatus model client
         
-    let requestToBorrowWithResponse model client =
-        requestToBorrow model client |> Utils.callWithOk<unit>
-        
-    let approveBorrowRequest (model: ApproveBorrowRequestInputModel) client =
-        Utils.postAsync Url.approveBorrowRequest model client
-        
-    let approveBorrowRequestWithResponse model client =
-        approveBorrowRequest model client |> Utils.callWithOk<unit>
-        
-    let returnListing (model: ReturnListingInputModel) client =
-        Utils.postAsync Url.returnListing model client
-        
-    let returnListingWithResponse model client =
-        returnListing model client |> Utils.callWithOk<unit>
+    let changeListingStatusWithResponse (model: ChangeListingStatusInputModel) client =
+        changeListingStatus model client |> Utils.callWithOk<ListingOutputModel>
