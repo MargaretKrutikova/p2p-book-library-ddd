@@ -20,13 +20,13 @@ type Model =
 type Msg =
     | ReceivedPublishedBookListings of PublishedListingsOutputModel
     | PublishedBookListingsError of ApiError
-    | RequestToBorrowBookListing of listingId: Guid
-    | BookListingRequestedSuccessfully of updatedListing: BookListingDto option
-    | BookListingRequestError of ApiError
+    | RequestToBorrow of listingId: Guid
+    | ListingRequestedToBorrow of updatedListing: BookListingDto option
+    | RequestToBorrowError of ApiError
 
 let init (): Model * Cmd<Msg> =
     { PublishedListings = Loading },
-    Cmd.OfAsync.eitherAsResult bookListingApi.getAllListings () ReceivedPublishedBookListings PublishedBookListingsError
+    Cmd.OfAsync.eitherAsResult listingApi.getAllListings () ReceivedPublishedBookListings PublishedBookListingsError
 
 let withRequestToBorrow (userId: Guid) (userName: string) (listing: BookListingDto): BookListingDto =
     let status = ListingStatusDto.RequestedToBorrow { Id = userId; Name = userName }
@@ -51,24 +51,21 @@ let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
         { model with PublishedListings = ApiState.Data data }, Cmd.none
     | PublishedBookListingsError error ->
         { model with PublishedListings = Error error }, Cmd.none
-    | RequestToBorrowBookListing listingId ->
+    | RequestToBorrow listingId ->
         match appUser with
         | Anonymous -> model, Cmd.none
         | LoggedIn user ->
             model,
             Cmd.OfAsync.eitherAsResult
-                bookListingApi.changeListingStatus 
+                listingApi.changeListingStatus 
                 { ListingId = listingId; Command = ChangeListingStatusInputCommand.RequestToBorrow; UserId = user.UserId }
-                BookListingRequestedSuccessfully
-                BookListingRequestError
-    | BookListingRequestedSuccessfully updatedListing ->
-        match appUser, updatedListing with
-        | LoggedIn user, Some updatedListing ->
-            let updateAfterRequest = fun _ -> updatedListing
-            let apiState = updateApiState (updateListing updateAfterRequest updatedListing.ListingId) model.PublishedListings
-            
-            { model with PublishedListings = apiState }, Cmd.none
-        | _, _ -> model, Cmd.none
+                ListingRequestedToBorrow
+                RequestToBorrowError
+    | ListingRequestedToBorrow (Some updatedListing) ->
+        let updateAfterRequest = fun _ -> updatedListing
+        let apiState = updateApiState (updateListing updateAfterRequest updatedListing.ListingId) model.PublishedListings
+        
+        { model with PublishedListings = apiState }, Cmd.none
 
     | _ -> model, Cmd.none
     
@@ -96,7 +93,7 @@ let publishedBookListingView dispatch (listing: BookListingDto) =
                   a [ ClassName "is-link is-light is-text"
                       OnClick (fun e ->
                                    e.preventDefault ()
-                                   listing.ListingId |> RequestToBorrowBookListing |> dispatch 
+                                   listing.ListingId |> RequestToBorrow |> dispatch 
                                ) ] [ str "request to borrow" ]
                  ]
             | Borrowed user -> [ "Borrowed by " + user.Name |> str ] 
