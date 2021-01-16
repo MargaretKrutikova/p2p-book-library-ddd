@@ -8,7 +8,7 @@ let userApi =
   |> Remoting.withRouteBuilder IUserApi.RouteBuilder
   |> Remoting.buildProxy<IUserApi>
 
-let bookListingApi =
+let listingApi =
   Remoting.createApi()
   |> Remoting.withRouteBuilder IBookListingApi.RouteBuilder
   |> Remoting.buildProxy<IBookListingApi>

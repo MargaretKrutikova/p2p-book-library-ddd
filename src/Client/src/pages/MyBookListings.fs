@@ -34,45 +34,64 @@ let toPublishListingInputModel (userId: Guid) (model: Model): ListingPublishInpu
       Title = model.NewBookListing.Title
       Author = model.NewBookListing.Author }
 
+let updateUserListing (updatedListing: BookListingDto) (userListing: UserBookListingDto) =
+    if userListing.ListingId = updatedListing.ListingId then
+        { userListing with Status = updatedListing.Status }
+    else
+        userListing
+
+let updateUserListingOutputModel (updatedListing: BookListingDto) (model: UserListingsOutputModel) =
+    let listings =
+        model.Listings
+        |> Seq.map (updateUserListing updatedListing)
+        |> Seq.toList
+        
+    { model with Listings = listings }
+
 type Msg =
     | ReceivedMyBookListings of UserListingsOutputModel
     | MyBookListingsError of ApiError
     | NewBookListingInputChanged of NewBookListingInputModel
+    // publish
     | PublishBookListingClicked
     | BookListingPublished of ListingPublishedOutputModel
     | PublishBookListingError of ApiError
+    // approve
+    | ApproveRequestToBorrow of listingId: Guid
+    | RequestToBorrowApproved of updatedListing: BookListingDto option
+    | ApproveRequestToBorrowError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
     Model.CreateDefault(),
-    Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+    Cmd.OfAsync.eitherAsResult listingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
 
 let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
     | ReceivedMyBookListings data ->
-        { model with
-              MyBookListings = ApiState.Data data },
+        { model with MyBookListings = ApiState.Data data },
         Cmd.none
     | MyBookListingsError error ->
-        { model with
-              MyBookListings = Error error },
+        { model with MyBookListings = Error error },
         Cmd.none
     | NewBookListingInputChanged inputModel ->
-        { model with
-              NewBookListing = inputModel },
+        { model with NewBookListing = inputModel },
         Cmd.none
     | PublishBookListingClicked ->
         let publishBookListingModel = toPublishListingInputModel userId model
         model,
-        Cmd.OfAsync.eitherAsResult
-            bookListingApi.publish
-            publishBookListingModel
-            BookListingPublished
-            PublishBookListingError
+        Cmd.OfAsync.eitherAsResult listingApi.publish publishBookListingModel BookListingPublished PublishBookListingError
     | BookListingPublished _ ->
         { model with MyBookListings = Loading },
-        Cmd.OfAsync.eitherAsResult bookListingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
-    | PublishBookListingError _ -> model, Cmd.none
+        Cmd.OfAsync.eitherAsResult listingApi.getByUserId userId ReceivedMyBookListings MyBookListingsError
+    | ApproveRequestToBorrow listingId ->
+        let approveModel =  { ListingId = listingId; Command = ChangeListingStatusInputCommand.ApproveRequestToBorrow; UserId = userId }
+        model,
+        Cmd.OfAsync.eitherAsResult listingApi.changeListingStatus approveModel RequestToBorrowApproved ApproveRequestToBorrowError
+    | RequestToBorrowApproved (Some updatedListing) ->
+        let apiState = updateApiState (updateUserListingOutputModel updatedListing) model.MyBookListings
+        { model with MyBookListings = apiState }, Cmd.none
 
+    | _ -> model, Cmd.none
 // VIEW
 
 let addBookListingResultMessage (result: ApiState<unit>) =
@@ -137,7 +156,7 @@ let publishBookListingView (model: Model) dispatch =
         ]
     ]
 
-let myBookListingView (listing: UserBookListingDto) =
+let myBookListingView dispatch (listing: UserBookListingDto) =
     div [ ClassName "flex flex-column" ] [
         div [] [ 
             Icon.icon 
@@ -145,16 +164,28 @@ let myBookListingView (listing: UserBookListingDto) =
                 [ i [ Style [ Color "" ]; ClassName "fa fa-lg fa-book" ] [] ]
             str (listing.Title + " " + listing.Author) 
         ]
-        div [ ] [ str "Available" ]
+        div [ ] (
+            match listing.Status with
+            | Available ->
+                [ str "Available" ]
+            | Borrowed user -> [ "Borrowed by " + user.Name |> str ] 
+            | RequestedToBorrow user ->
+                  [ "Requested by " + user.Name + ", " |> str 
+                    a [ ClassName "is-link is-light is-text"
+                        OnClick (fun e ->
+                                   e.preventDefault ()
+                                   listing.ListingId |> ApproveRequestToBorrow |> dispatch 
+                               ) ] [ str "approve request" ] ] 
+        )
     ]
 
-let listingsView (model: UserListingsOutputModel) =
+let listingsView dispatch (model: UserListingsOutputModel) =
     Columns.columns [ Columns.IsCentered ] [
         Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
             Html.ul
                 [ prop.children
                     (model.Listings
-                     |> Seq.map myBookListingView
+                     |> Seq.map (myBookListingView dispatch)
                      |> Seq.toList) ]
         ]
     ]
@@ -169,7 +200,7 @@ let view =
             | ApiState.NotAsked -> Html.span []
             | Loading -> Html.text "..."
             | Error _ -> Notification.error
-            | ApiState.Data data -> listingsView data
+            | ApiState.Data data -> listingsView dispatch data
         
         Column.column [ Column.Width(Screen.All, Column.IsFull) ] [
             publishBookListingView model dispatch

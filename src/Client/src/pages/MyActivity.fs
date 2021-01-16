@@ -25,7 +25,7 @@ type Msg =
 
 let init (userId: Guid): Model * Cmd<Msg> =
     { UserActivity = Loading },
-    Cmd.OfAsync.eitherAsResult bookListingApi.getUserActivity userId ReceivedUserActivity UserActivityError
+    Cmd.OfAsync.eitherAsResult listingApi.getUserActivity userId ReceivedUserActivity UserActivityError
 
 let removeListingFromUserListings listingId (listings: UserActivityListing list) =
     listings |> List.filter (fun l -> l.ListingId <> listingId)
@@ -42,7 +42,7 @@ let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     | CancelRequestToBorrow listingId ->
         model,
         Cmd.OfAsync.eitherAsResult
-            bookListingApi.changeListingStatus 
+            listingApi.changeListingStatus 
             { ListingId = listingId; Command = ChangeListingStatusInputCommand.CancelRequestToBorrow; UserId = userId }
             RequestToBorrowCanceled
             CancelRequestToBorrowError
