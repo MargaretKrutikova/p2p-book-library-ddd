@@ -19,10 +19,19 @@ type Model =
 type Msg =
     | ReceivedUserActivity of UserActivity
     | UserActivityError of ApiError
+    | CancelRequestToBorrow of listingId: Guid
+    | RequestToBorrowCanceled of updatedListing: BookListingDto option
+    | CancelRequestToBorrowError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
     { UserActivity = Loading },
     Cmd.OfAsync.eitherAsResult bookListingApi.getUserActivity userId ReceivedUserActivity UserActivityError
+
+let removeListingFromUserListings listingId (listings: UserActivityListing list) =
+    listings |> List.filter (fun l -> l.ListingId <> listingId)
+
+let updateActivity (updateListings) (activity: UserActivity) =
+    { activity with Listings = updateListings activity.Listings }
 
 let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
@@ -30,7 +39,20 @@ let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
         { model with UserActivity = ApiState.Data data }, Cmd.none
     | UserActivityError error ->
         { model with UserActivity = Error error }, Cmd.none
-    
+    | CancelRequestToBorrow listingId ->
+        model,
+        Cmd.OfAsync.eitherAsResult
+            bookListingApi.changeListingStatus 
+            { ListingId = listingId; Command = ChangeListingStatusInputCommand.CancelRequestToBorrow; UserId = userId }
+            RequestToBorrowCanceled
+            CancelRequestToBorrowError
+    | RequestToBorrowCanceled (Some updatedListing) ->
+        let updateAfterRequest = removeListingFromUserListings updatedListing.ListingId |> updateActivity
+        let apiState = updateApiState updateAfterRequest model.UserActivity
+        
+        { model with UserActivity = apiState }, Cmd.none
+
+    | _ -> model, Cmd.none
 // VIEW
 
 let addBookListingResultMessage (result: ApiState<unit>) =
@@ -55,6 +77,7 @@ let userActivityListingView dispatch (listing: UserActivityListing) =
                   a [ ClassName "is-link is-light is-text"
                       OnClick (fun e ->
                                    e.preventDefault ()
+                                   CancelRequestToBorrow listing.ListingId |> dispatch
                                ) ] [ str "cancel" ]
                  ]
             | BorrowedByUser -> [ "Borrowed by me" |> str ] 
