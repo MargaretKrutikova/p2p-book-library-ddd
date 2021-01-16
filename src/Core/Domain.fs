@@ -17,6 +17,7 @@ module Errors =
         | ListingIsAlreadyBorrowed
         | ListingIsNotRequested
         | ListingIsNotBorrowed
+        | ListingIsAlreadyApproved
 
     type AppError =
         | Validation of ValidationError
@@ -164,7 +165,12 @@ module Logic =
     }
     
     let cancelRequestToBorrow (request: CancelListingRequest): Result<ListingStatus, AppError> =
-        request.ListingStatus |> Ok
+        match request.ListingStatus with
+        | RequestedToBorrow borrowerId when borrowerId = request.BorrowerId -> Available |> Ok
+        | Borrowed borrowerId when borrowerId = request.BorrowerId -> AppError.toDomain ListingIsAlreadyApproved
+        | Available -> AppError.toDomain ListingIsNotRequested
+        | RequestedToBorrow _ 
+        | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
     
     type ApproveBorrowListingRequest = {
         ListingStatus: ListingStatus
