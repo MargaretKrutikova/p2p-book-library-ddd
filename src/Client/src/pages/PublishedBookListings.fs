@@ -32,10 +32,16 @@ let withRequestToBorrow (userId: Guid) (userName: string) (listing: BookListingD
     let status = ListingStatusDto.RequestedToBorrow { Id = userId; Name = userName }
     { listing with Status = status }
 
-let updateListing (updateFn: BookListingDto -> BookListingDto) (listingId: Guid) (model: PublishedListingsOutputModel) =
+let updateUserListing (updatedListing: BookListingDto) (listing: BookListingDto) =
+    if listing.ListingId = updatedListing.ListingId then
+        { listing with Status = updatedListing.Status }
+    else
+        listing
+
+let updatePublishedListingsModel (updatedListing: BookListingDto) (model: PublishedListingsOutputModel) =
     let listings =
         model.Listings
-        |> Seq.map (fun listing -> if listing.ListingId = listing.ListingId then updateFn listing else listing)
+        |> Seq.map (updateUserListing updatedListing)
         |> Seq.toList
         
     { model with Listings = listings }
@@ -62,9 +68,7 @@ let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
                 ListingRequestedToBorrow
                 RequestToBorrowError
     | ListingRequestedToBorrow (Some updatedListing) ->
-        let updateAfterRequest = fun _ -> updatedListing
-        let apiState = updateApiState (updateListing updateAfterRequest updatedListing.ListingId) model.PublishedListings
-        
+        let apiState = updateApiState (updatePublishedListingsModel updatedListing) model.PublishedListings
         { model with PublishedListings = apiState }, Cmd.none
 
     | _ -> model, Cmd.none
