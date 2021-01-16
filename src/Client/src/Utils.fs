@@ -39,3 +39,17 @@ module Notification =
         Notification.notification
             [ Notification.Color IsSuccess; Notification.IsLight ]
             [ str text ]
+
+module User =
+    open Browser.WebStorage
+    let private loggedInUserNameStorageKey = "p2p-library/logged-in-user-name"
+    type UserName = string
+    let getLoggedInUserNameFromStorage (): UserName option =
+      let userName = localStorage.getItem(loggedInUserNameStorageKey)
+      if userName |> String.IsNullOrWhiteSpace then
+        None
+      else 
+        Some userName
+        
+    let saveLoggedInUserNameInStorage (userName: UserName) =
+      localStorage.setItem(loggedInUserNameStorageKey, userName)

@@ -1,6 +1,5 @@
 module Client.App
 
-open System
 open Api.Models
 open Client.Types
 open Client.Pages
@@ -20,9 +19,10 @@ type State =
 type Msg =
     | PageChanged of Route
     | UserCreated
-    | UserLoggedIn of UserOutputModel
     | NavigateToRoute of Route
-
+    | UserLoggedIn of UserOutputModel
+    | UserLoginError of ApiError
+    
 type Dispatch = Msg -> unit
 
 let redirectIfProtected (user: AppUser) (route: Route): Route =
@@ -32,9 +32,13 @@ let redirectIfProtected (user: AppUser) (route: Route): Route =
 
 let init () =
     let initialUrl = parseUrl (Router.currentUrl ())
-    { CurrentPage = initialUrl
-      AppUser = Anonymous },
-    Cmd.none
+    let userName = User.getLoggedInUserNameFromStorage ()
+    
+    { CurrentPage = initialUrl; AppUser = Anonymous },
+        match userName with
+        | None -> Cmd.none
+        | Some login ->
+            Cmd.OfAsync.eitherAsResult Api.userApi.login {Name = login} UserLoggedIn UserLoginError
 
 let update msg state =
     match msg with
@@ -46,8 +50,9 @@ let update msg state =
     | UserCreated -> state, Cmd.ofSub (fun _ -> navigateToSignIn ())
     | NavigateToRoute route -> state, route |> urlToRoute |> Cmd.navigate
     | UserLoggedIn user ->
-        // TODO: save cookies with the logged in user name
-        { state with AppUser = LoggedIn user }, Cmd.ofSub (fun _ -> navigateToMyBookListings ())
+        { state with AppUser = LoggedIn user }, Cmd.ofSub (fun _ ->
+            User.saveLoggedInUserNameInStorage user.Name
+            navigateToMyBookListings ())
     | _ -> state, Cmd.none
 
 // VIEW
