@@ -19,9 +19,14 @@ type Model =
 type Msg =
     | ReceivedUserActivity of UserActivity
     | UserActivityError of ApiError
+    // cancel request
     | CancelRequestToBorrow of listingId: Guid
     | RequestToBorrowCanceled of updatedListing: BookListingDto option
     | CancelRequestToBorrowError of ApiError
+    // return
+    | ReturnListing of listingId: Guid
+    | ListingReturned of updatedListing: BookListingDto option
+    | ReturnListingError of ApiError
 
 let init (userId: Guid): Model * Cmd<Msg> =
     { UserActivity = Loading },
@@ -33,6 +38,12 @@ let removeListingFromUserListings listingId (listings: UserActivityListing list)
 let updateActivity (updateListings) (activity: UserActivity) =
     { activity with Listings = updateListings activity.Listings }
 
+let removeListingFromModel (listingIdToRemove: Guid) model =
+    let updateAfterRequest = removeListingFromUserListings listingIdToRemove |> updateActivity
+    let apiState = updateApiState updateAfterRequest model.UserActivity
+        
+    { model with UserActivity = apiState }
+
 let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
     | ReceivedUserActivity data ->
@@ -40,19 +51,20 @@ let update (userId: Guid) (message: Msg) (model: Model): Model * Cmd<Msg> =
     | UserActivityError error ->
         { model with UserActivity = Error error }, Cmd.none
     | CancelRequestToBorrow listingId ->
+        let input = { ListingId = listingId; Command = ChangeListingStatusInputCommand.CancelRequestToBorrow; UserId = userId }
         model,
-        Cmd.OfAsync.eitherAsResult
-            listingApi.changeListingStatus 
-            { ListingId = listingId; Command = ChangeListingStatusInputCommand.CancelRequestToBorrow; UserId = userId }
-            RequestToBorrowCanceled
-            CancelRequestToBorrowError
+        Cmd.OfAsync.eitherAsResult listingApi.changeListingStatus input RequestToBorrowCanceled CancelRequestToBorrowError
     | RequestToBorrowCanceled (Some updatedListing) ->
-        let updateAfterRequest = removeListingFromUserListings updatedListing.ListingId |> updateActivity
-        let apiState = updateApiState updateAfterRequest model.UserActivity
-        
-        { model with UserActivity = apiState }, Cmd.none
+        removeListingFromModel updatedListing.ListingId model, Cmd.none
+    | ReturnListing listingId ->
+        let input = { ListingId = listingId; Command = ChangeListingStatusInputCommand.ReturnListing; UserId = userId }
+        model,
+        Cmd.OfAsync.eitherAsResult listingApi.changeListingStatus input ListingReturned ReturnListingError
+    | ListingReturned (Some updatedListing) ->
+         removeListingFromModel updatedListing.ListingId model, Cmd.none
 
     | _ -> model, Cmd.none
+    
 // VIEW
 
 let addBookListingResultMessage (result: ApiState<unit>) =
@@ -80,7 +92,14 @@ let userActivityListingView dispatch (listing: UserActivityListing) =
                                    CancelRequestToBorrow listing.ListingId |> dispatch
                                ) ] [ str "cancel" ]
                  ]
-            | BorrowedByUser -> [ "Borrowed by me" |> str ] 
+            | BorrowedByUser ->
+                [ "Borrowed by me, " |> str
+                  a [ ClassName "is-link is-light is-text"
+                      OnClick (fun e ->
+                                   e.preventDefault ()
+                                   ReturnListing listing.ListingId |> dispatch
+                               ) ] [ str "return" ]
+                   ] 
         )
     ]
 
