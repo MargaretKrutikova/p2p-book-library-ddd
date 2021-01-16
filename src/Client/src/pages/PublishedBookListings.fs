@@ -51,10 +51,17 @@ let isCurrentUser (appUser: AppUser) (userId: Guid) =
     | Anonymous -> false
     | LoggedIn user -> user.UserId = userId
 
+let removeLoggedInUsersBooks (appUser: AppUser) (model: PublishedListingsOutputModel) =
+    match appUser with
+    | Anonymous -> model
+    | LoggedIn user ->
+        let listings = model.Listings |> List.filter (fun l -> l.OwnerId <> user.UserId)
+        { model with Listings = listings }
+
 let update (appUser: AppUser) (message: Msg) (model: Model): Model * Cmd<Msg> =
     match message with
     | ReceivedPublishedBookListings data ->
-        { model with PublishedListings = ApiState.Data data }, Cmd.none
+        { model with PublishedListings = data |> removeLoggedInUsersBooks appUser |> ApiState.Data }, Cmd.none
     | PublishedBookListingsError error ->
         { model with PublishedListings = Error error }, Cmd.none
     | RequestToBorrow listingId ->
