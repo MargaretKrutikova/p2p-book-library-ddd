@@ -2,8 +2,8 @@ module Api.ApiHandlers
 
 open Api.CompositionRoot
 open Api.Models
+open Core.Commands
 open Core.Domain.Errors
-open Core.Domain.Messages
 open Core.Domain.Types
 open Core.Handlers.QueryHandlers
 
@@ -28,7 +28,7 @@ module CommandArgsConversions =
           Name = inputModel.Name }
     
     let private toChangeListingStatusArgs' (date: DateTime) (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
-        { UserId = userId |> UserId.create; ListingId = ListingId.create listingId; DateTime = date; Command = command }
+        { ChangeRequestedByUserId = userId |> UserId.create; ListingId = ListingId.create listingId; DateTime = date; Command = command }
 
     let toChangeListingStatusArgs (date: DateTime) (inputModel: ChangeListingStatusInputModel): ChangeListingStatusArgs =
         let command =
@@ -40,7 +40,7 @@ module CommandArgsConversions =
             | ChangeListingStatusInputCommand.ApproveRequestToBorrow ->
                 ChangeListingStatusCommand.ApproveRequestToBorrow 
             | ChangeListingStatusInputCommand.ReturnListing ->
-                ChangeListingStatusCommand.ReturnListing 
+                ChangeListingStatusCommand.ReturnBorrowedListing 
         
         toChangeListingStatusArgs' date inputModel.ListingId inputModel.UserId command
         

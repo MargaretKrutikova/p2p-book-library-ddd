@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="Events.fs" />
+    <Compile Include="Commands.fs" />
+    <Compile Include="Logic.fs" />
 
     <Compile Include="CommandHandlers.fs" />
 
