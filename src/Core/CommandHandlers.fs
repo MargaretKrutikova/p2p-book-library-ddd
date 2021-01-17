@@ -1,8 +1,8 @@
 module Core.Handlers.CommandHandlers
 
 open System.Threading.Tasks
-open Core.Domain
-open Core.Domain.Messages
+open Core.Logic
+open Core.Commands
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 
@@ -12,91 +12,110 @@ open Core.Domain.Types
 type CommandResult = Task<Result<unit, AppError>>
 type CommandHandler = Command -> CommandResult
 
-module CommandPersistenceOperations = 
-  type DbReadError =
-    | MissingRecord
+module CommandPersistenceOperations =
+    type DbReadError = | MissingRecord
 
-  type DbResult<'a> = Task<Result<'a, DbReadError>>
-  type UserReadModel = {
-    Id: UserId
-    Name: string
-  }
-  
-  type ListingReadModel = {
-    Id: ListingId
-    OwnerId: UserId
-    ListingStatus: ListingStatus
-  }
-  
-  type GetUserById = UserId -> DbResult<UserReadModel>
-  type GetListingById = ListingId -> DbResult<ListingReadModel>
-  
-  type DbWriteError =
-    | WriteError
+    type DbResult<'a> = Task<Result<'a, DbReadError>>
+    type UserReadModel = { Id: UserId; Name: string }
 
-  type DbWriteResult = Task<Result<unit, DbWriteError>>
-  type CreateUser = User -> DbWriteResult
-  type CreateListing = BookListing -> DbWriteResult
-  type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
+    type ListingReadModel =
+        { Id: ListingId
+          OwnerId: UserId
+          ListingStatus: ListingStatus }
 
-type CommandPersistenceOperations = {
-  GetUserById: CommandPersistenceOperations.GetUserById
-  GetListingById: CommandPersistenceOperations.GetListingById
-  CreateListing: CommandPersistenceOperations.CreateListing
-  CreateUser: CommandPersistenceOperations.CreateUser
-  UpdateListingStatus: CommandPersistenceOperations.UpdateListingStatus
-}
+    type GetUserById = UserId -> DbResult<UserReadModel>
+    type GetListingById = ListingId -> DbResult<ListingReadModel>
+
+    type DbWriteError = | WriteError
+
+    type DbWriteResult = Task<Result<unit, DbWriteError>>
+    type CreateUser = User -> DbWriteResult
+    type CreateListing = BookListing -> DbWriteResult
+    type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
+
+type CommandPersistenceOperations =
+    { GetUserById: CommandPersistenceOperations.GetUserById
+      GetListingById: CommandPersistenceOperations.GetListingById
+      CreateListing: CommandPersistenceOperations.CreateListing
+      CreateUser: CommandPersistenceOperations.CreateUser
+      UpdateListingStatus: CommandPersistenceOperations.UpdateListingStatus }
 
 let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserById) userId: Task<Result<unit, AppError>> =
-  getUserById userId 
-  |> TaskResult.mapError (function | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
-  |> TaskResult.ignore
+    getUserById userId
+    |> TaskResult.mapError (function
+        | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
+    |> TaskResult.ignore
 
-let private mapFromDbListingError = function
+let private mapFromDbListingError =
+    function
     | CommandPersistenceOperations.MissingRecord -> Validation ListingNotFound
 
-type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
+type PublishBookListing =
+    CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
+
 let publishBookListing: PublishBookListing =
     fun getUserById createListing args ->
-    taskResult {
-      do! checkUserExists getUserById args.UserId
+        taskResult {
+            do! checkUserExists getUserById args.UserId
 
-      let! bookListing = Logic.publishBookListing args 
-      do! createListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
-    }
+            let! bookListing = publishBookListing args
 
-type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
-let registerUser: RegisterUser =
-  fun createUser args ->
-     taskResult {
-        let user: User = {
-          UserId = args.UserId
-          Name = args.Name
+            do! createListing bookListing
+                |> TaskResult.mapError (fun _ -> ServiceError)
         }
-        do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
-     }
+
+type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult
+
+let registerUser: RegisterUser =
+    fun createUser args ->
+        taskResult {
+            let user: User =
+                { UserId = args.UserId
+                  Name = args.Name }
+
+            do! createUser user
+                |> TaskResult.mapError (fun _ -> ServiceError)
+        }
 
 let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs) =
-   taskResult {
-       do! checkUserExists persistence.GetUserById args.UserId
-       let! listing = persistence.GetListingById args.ListingId |> TaskResult.mapError mapFromDbListingError
-       let! newStatus =
-         match args.Command with
-         | RequestToBorrow ->
-            Logic.requestBorrowListing { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; BorrowerId = args.UserId }
-         | CancelRequestToBorrow ->
-            Logic.cancelRequestToBorrow { ListingStatus = listing.ListingStatus; BorrowerId =  args.UserId }
-         | ApproveRequestToBorrow ->
-            Logic.approveBorrowListingRequest { ListingStatus = listing.ListingStatus; OwnerId = listing.OwnerId; ApproverId = args.UserId }
-         | ReturnListing ->
-            Logic.returnBookListing { ListingStatus = listing.ListingStatus; BorrowerId = args.UserId }
-       
-       do! persistence.UpdateListingStatus listing.Id newStatus |> TaskResult.mapError (fun _ -> ServiceError)
-   }
-    
+    taskResult {
+        do! checkUserExists persistence.GetUserById args.ChangeRequestedByUserId
+        let! listing =
+            persistence.GetListingById args.ListingId
+            |> TaskResult.mapError mapFromDbListingError
+
+        let! (event, newStatus) =
+            match args.Command with
+            | RequestToBorrow ->
+                requestToBorrowListing
+                    { ListingId = listing.Id
+                      ListingStatus = listing.ListingStatus
+                      OwnerId = listing.OwnerId
+                      RequesterId = args.ChangeRequestedByUserId }
+            | CancelRequestToBorrow ->
+                cancelRequestToBorrowListing
+                    { ListingId = listing.Id
+                      ListingStatus = listing.ListingStatus
+                      RequesterId = args.ChangeRequestedByUserId }
+            | ApproveRequestToBorrow ->
+                approveRequestToBorrowListing
+                    { ListingId = listing.Id
+                      ListingStatus = listing.ListingStatus
+                      OwnerId = listing.OwnerId
+                      ApproverId = args.ChangeRequestedByUserId }
+            | ReturnBorrowedListing ->
+                returnBorrowedListing
+                    { ListingId = listing.Id
+                      ListingStatus = listing.ListingStatus
+                      BorrowerId = args.ChangeRequestedByUserId }
+
+        do! persistence.UpdateListingStatus listing.Id newStatus
+            |> TaskResult.mapError (fun _ -> ServiceError)
+    }
+
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
-  fun command ->
-    match command with
-    | Command.RegisterUser args -> registerUser persistence.CreateUser args
-    | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
-    | Command.ChangeListingStatus args -> changeListingStatus persistence args
+    fun command ->
+        match command with
+        | Command.RegisterUser args -> registerUser persistence.CreateUser args
+        | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
+        | Command.ChangeListingStatus args -> changeListingStatus persistence args
