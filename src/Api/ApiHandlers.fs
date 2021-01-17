@@ -27,10 +27,10 @@ module CommandArgsConversions =
         { UserId = UserId.create userId
           Name = inputModel.Name }
     
-    let private toChangeListingStatusArgs' (date: DateTime) (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
-        { ChangeRequestedByUserId = userId |> UserId.create; ListingId = ListingId.create listingId; DateTime = date; Command = command }
+    let private toChangeListingStatusArgs' (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
+        { ChangeRequestedByUserId = userId |> UserId.create; ListingId = ListingId.create listingId; Command = command }
 
-    let toChangeListingStatusArgs (date: DateTime) (inputModel: ChangeListingStatusInputModel): ChangeListingStatusArgs =
+    let toChangeListingStatusArgs (inputModel: ChangeListingStatusInputModel): ChangeListingStatusArgs =
         let command =
             match inputModel.Command with
             | ChangeListingStatusInputCommand.RequestToBorrow ->
@@ -42,7 +42,7 @@ module CommandArgsConversions =
             | ChangeListingStatusInputCommand.ReturnListing ->
                 ChangeListingStatusCommand.ReturnBorrowedListing 
         
-        toChangeListingStatusArgs' date inputModel.ListingId inputModel.UserId command
+        toChangeListingStatusArgs' inputModel.ListingId inputModel.UserId command
         
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
@@ -70,6 +70,7 @@ let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
 
         do! root.CommandHandler command
             |> TaskResult.mapError fromAppError
+            |> TaskResult.ignore
 
         let response: UserRegisteredOutputModel = { Id = userId }
         return response
@@ -85,6 +86,7 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
 
         do! root.CommandHandler command
             |> TaskResult.mapError fromAppError
+            |> TaskResult.ignore
 
         let response: ListingPublishedOutputModel = { Id = listingId }
         return response
@@ -92,12 +94,11 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
     
 let changeListingStatus (root: CompositionRoot) (inputModel: ChangeListingStatusInputModel) =
     taskResult {
-        let date = DateTime.UtcNow
         let command =
-            CommandArgsConversions.toChangeListingStatusArgs date inputModel
+            CommandArgsConversions.toChangeListingStatusArgs inputModel
             |> Command.ChangeListingStatus
 
-        do! root.CommandHandler command |> TaskResult.mapError fromAppError
+        do! root.CommandHandler command |> TaskResult.mapError fromAppError |> TaskResult.ignore
         return! getExistingListingById root.QueryHandler inputModel.ListingId
     }
 

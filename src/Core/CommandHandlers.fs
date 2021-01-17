@@ -1,6 +1,8 @@
 module Core.Handlers.CommandHandlers
 
+open System
 open System.Threading.Tasks
+open Core.Events
 open Core.Logic
 open Core.Commands
 open FsToolkit.ErrorHandling.TaskResultCE
@@ -9,7 +11,7 @@ open FsToolkit.ErrorHandling
 open Core.Domain.Errors
 open Core.Domain.Types
 
-type CommandResult = Task<Result<unit, AppError>>
+type CommandResult = Task<Result<EventEnvelope option, AppError>>
 type CommandHandler = Command -> CommandResult
 
 module CommandPersistenceOperations =
@@ -50,34 +52,28 @@ let private mapFromDbListingError =
     function
     | CommandPersistenceOperations.MissingRecord -> Validation ListingNotFound
 
-type PublishBookListing =
-    CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
+let publishBookListing (operations: CommandPersistenceOperations) (args: PublishBookListingArgs): CommandResult = 
+    taskResult {
+        do! checkUserExists operations.GetUserById args.UserId
+        let! bookListing = publishBookListing args
 
-let publishBookListing: PublishBookListing =
-    fun getUserById createListing args ->
-        taskResult {
-            do! checkUserExists getUserById args.UserId
+        do! operations.CreateListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
+        let event = Event.BookListingPublished { Listing = bookListing }
+        
+        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+    }
 
-            let! bookListing = publishBookListing args
+let registerUser (createUser: CommandPersistenceOperations.CreateUser) (args: RegisterUserArgs): CommandResult =
+    taskResult {
+        let user: User =
+            { UserId = args.UserId
+              Name = args.Name }
 
-            do! createListing bookListing
-                |> TaskResult.mapError (fun _ -> ServiceError)
-        }
+        do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
+        return None
+    }
 
-type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult
-
-let registerUser: RegisterUser =
-    fun createUser args ->
-        taskResult {
-            let user: User =
-                { UserId = args.UserId
-                  Name = args.Name }
-
-            do! createUser user
-                |> TaskResult.mapError (fun _ -> ServiceError)
-        }
-
-let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs) =
+let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
     taskResult {
         do! checkUserExists persistence.GetUserById args.ChangeRequestedByUserId
         let! listing =
@@ -109,13 +105,16 @@ let changeListingStatus (persistence: CommandPersistenceOperations) (args: Chang
                       ListingStatus = listing.ListingStatus
                       BorrowerId = args.ChangeRequestedByUserId }
 
+        // TODO: persist event instead
         do! persistence.UpdateListingStatus listing.Id newStatus
             |> TaskResult.mapError (fun _ -> ServiceError)
+        
+        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
     }
 
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
     fun command ->
         match command with
         | Command.RegisterUser args -> registerUser persistence.CreateUser args
-        | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
+        | Command.PublishBookListing args -> publishBookListing persistence args
         | Command.ChangeListingStatus args -> changeListingStatus persistence args

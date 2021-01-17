@@ -1,6 +1,5 @@
 module Core.Commands
 
-open System
 open Core.Domain.Types
 
 type PublishBookListingArgs =
@@ -20,7 +19,6 @@ type ChangeListingStatusCommand =
 type ChangeListingStatusArgs =
     { ChangeRequestedByUserId: UserId
       ListingId: ListingId
-      DateTime: DateTime
       Command: ChangeListingStatusCommand }
 
 [<RequireQualifiedAccess>]

@@ -19,9 +19,13 @@ type ListingReturnedEventArgs =
     { ListingId: ListingId
       BorrowerId: UserId }
 
+type BookListingPublishedEventArgs = {
+    Listing: BookListing
+}
+
 [<RequireQualifiedAccess>]
 type Event =
-    | BookListingPublished of ListingId
+    | BookListingPublished of BookListingPublishedEventArgs
     | ListingRequestedToBorrow of ListingRequestedToBorrowEventArgs
     | RequestToBorrowCancelled of RequestToBorrowCancelledEventArgs
     | RequestToBorrowApproved of RequestToBorrowApprovedEventArgs
