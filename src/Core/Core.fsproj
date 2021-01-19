@@ -9,6 +9,8 @@
     <Compile Include="Events.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="Logic.fs" />
+    <Compile Include="EventStore.fs" />
+    <Compile Include="Persistence.fs" />
 
     <Compile Include="CommandHandlers.fs" />
 
