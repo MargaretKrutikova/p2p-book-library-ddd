@@ -1,120 +1,72 @@
 module Core.Handlers.CommandHandlers
 
-open System
 open System.Threading.Tasks
+open Core.EventStore
 open Core.Events
 open Core.Logic
 open Core.Commands
+open Core.Persistence
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 
 open Core.Domain.Errors
 open Core.Domain.Types
 
-type CommandResult = Task<Result<EventEnvelope option, AppError>>
+type CommandResult = Task<Result<DomainEvent option, AppError>>
 type CommandHandler = Command -> CommandResult
 
-module CommandPersistenceOperations =
-    type DbReadError = | MissingRecord
-
-    type DbResult<'a> = Task<Result<'a, DbReadError>>
-    type UserReadModel = { Id: UserId; Name: string }
-
-    type ListingReadModel =
-        { Id: ListingId
-          OwnerId: UserId
-          ListingStatus: ListingStatus }
-
-    type GetUserById = UserId -> DbResult<UserReadModel>
-    type GetListingById = ListingId -> DbResult<ListingReadModel>
-
-    type DbWriteError = | WriteError
-
-    type DbWriteResult = Task<Result<unit, DbWriteError>>
-    type CreateUser = User -> DbWriteResult
-    type CreateListing = BookListing -> DbWriteResult
-    type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
-
-type CommandPersistenceOperations =
-    { GetUserById: CommandPersistenceOperations.GetUserById
-      GetListingById: CommandPersistenceOperations.GetListingById
-      CreateListing: CommandPersistenceOperations.CreateListing
-      CreateUser: CommandPersistenceOperations.CreateUser
-      UpdateListingStatus: CommandPersistenceOperations.UpdateListingStatus }
-
-let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserById) userId: Task<Result<unit, AppError>> =
+let private checkUserExists (getUserById: GetUserById) userId: Task<Result<unit, AppError>> =
     getUserById userId
-    |> TaskResult.mapError (function
-        | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
+    |> TaskResult.mapError (function | MissingRecord -> Validation UserNotFound)
     |> TaskResult.ignore
 
-let private mapFromDbListingError =
+let private mapFromEventStoreError =
     function
-    | CommandPersistenceOperations.MissingRecord -> Validation ListingNotFound
+        | DbError | ExpectedVersionMismatch -> ServiceError
 
-let publishBookListing (operations: CommandPersistenceOperations) (args: PublishBookListingArgs): CommandResult = 
+let publishBookListing (operations: Persistence) (store: EventStore) (args: PublishBookListingArgs): CommandResult = 
     taskResult {
         do! checkUserExists operations.GetUserById args.UserId
         let! bookListing = publishBookListing args
 
-        do! operations.CreateListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
-        let event = Event.BookListingPublished { Listing = bookListing }
+        let domainEvent = DomainEvent.BookListingPublished { Listing = bookListing }
+        let event = { Data = domainEvent; StreamId = bookListing.ListingId |> ListingId.value }
         
-        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+        do! store.Append [event] |> TaskResult.mapError mapFromEventStoreError
+        return Some domainEvent
     }
 
-let registerUser (createUser: CommandPersistenceOperations.CreateUser) (args: RegisterUserArgs): CommandResult =
+let registerUser (persistence: Persistence) (args: RegisterUserArgs): CommandResult =
     taskResult {
-        let user: User =
-            { UserId = args.UserId
-              Name = args.Name }
-
-        do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
+        let user: User = { UserId = args.UserId; Name = args.Name }
+        do! persistence.CreateUser user |> TaskResult.mapError (fun _ -> ServiceError)
         return None
     }
 
-let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
+let changeListingStatus (persistence: Persistence) (store: EventStore) (args: ChangeListingStatusArgs): CommandResult =
     taskResult {
         do! checkUserExists persistence.GetUserById args.ChangeRequestedByUserId
+        let! listingEvents =
+            args.ListingId
+            |> ListingId.value
+            |> store.GetStream
+            |> TaskResult.map (List.map (fun event -> event.Data))
+            |> TaskResult.mapError mapFromEventStoreError
+
         let! listing =
-            persistence.GetListingById args.ListingId
-            |> TaskResult.mapError mapFromDbListingError
+            List.fold Projections.applyEvent None listingEvents
+            |> Result.requireSome (Validation ListingNotFound)
+            
+        let! event = executeStatusChangeCommand listing args
+        let eventWrite = { Data = event; StreamId = listing.ListingId |> ListingId.value }
 
-        let! (event, newStatus) =
-            match args.Command with
-            | RequestToBorrow ->
-                requestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      OwnerId = listing.OwnerId
-                      RequesterId = args.ChangeRequestedByUserId }
-            | CancelRequestToBorrow ->
-                cancelRequestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      RequesterId = args.ChangeRequestedByUserId }
-            | ApproveRequestToBorrow ->
-                approveRequestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      OwnerId = listing.OwnerId
-                      ApproverId = args.ChangeRequestedByUserId }
-            | ReturnBorrowedListing ->
-                returnBorrowedListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      BorrowerId = args.ChangeRequestedByUserId }
-
-        // TODO: persist event instead
-        do! persistence.UpdateListingStatus listing.Id newStatus
-            |> TaskResult.mapError (fun _ -> ServiceError)
-        
-        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+        do! store.Append [eventWrite] |> TaskResult.mapError mapFromEventStoreError
+        return event |> Some
     }
 
-let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
+let handleCommand (persistence: Persistence) (store: EventStore): CommandHandler =
     fun command ->
         match command with
-        | Command.RegisterUser args -> registerUser persistence.CreateUser args
-        | Command.PublishBookListing args -> publishBookListing persistence args
-        | Command.ChangeListingStatus args -> changeListingStatus persistence args
+        | Command.RegisterUser args -> registerUser persistence args
+        | Command.PublishBookListing args -> publishBookListing persistence store args
+        | Command.ChangeListingStatus args -> changeListingStatus persistence store args

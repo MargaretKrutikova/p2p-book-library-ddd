@@ -27,34 +27,30 @@ let publishBookListing (dto: PublishBookListingArgs): Result<BookListing, AppErr
     }
 
 type RequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
+    { ListingStatus: ListingStatus
       OwnerId: UserId
       RequesterId: UserId }
 
-let requestToBorrowListing (data: RequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
+let requestToBorrowListing (data: RequestToBorrowListingData): Result<DomainEvent, AppError> =
     if data.OwnerId = data.RequesterId then
         AppError.toDomain ListingNotEligibleForOperation
     else
         match data.ListingStatus with
         | Available ->
-            let event = Event.ListingRequestedToBorrow { ListingId = data.ListingId; RequesterId = data.RequesterId }
-            (event, RequestedToBorrow data.RequesterId) |> Ok
+            DomainEvent.ListingRequestedToBorrow { RequesterId = data.RequesterId } |> Ok
         | RequestedToBorrow borrowerId when borrowerId = data.RequesterId ->
             AppError.toDomain ListingAlreadyRequestedByUser
         | RequestedToBorrow _
         | Borrowed _ -> AppError.toDomain BorrowErrorListingIsNotAvailable
 
 type CancelRequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
+    { ListingStatus: ListingStatus
       RequesterId: UserId }
 
-let cancelRequestToBorrowListing (data: CancelRequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
+let cancelRequestToBorrowListing (data: CancelRequestToBorrowListingData): Result<DomainEvent, AppError> =
     match data.ListingStatus with
     | RequestedToBorrow borrowerId when borrowerId = data.RequesterId ->
-        let event = Event.RequestToBorrowCancelled { ListingId = data.ListingId; RequesterId = data.RequesterId }
-        (event, Available) |> Ok
+        DomainEvent.RequestToBorrowCancelled { RequesterId = data.RequesterId } |> Ok
     | Borrowed borrowerId when borrowerId = data.RequesterId ->
         AppError.toDomain ListingIsAlreadyApproved
     | Available -> AppError.toDomain ListingIsNotRequested
@@ -62,32 +58,49 @@ let cancelRequestToBorrowListing (data: CancelRequestToBorrowListingData): Resul
     | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
 
 type ApproveRequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
+    { ListingStatus: ListingStatus
       OwnerId: UserId
       ApproverId: UserId }
 
-let approveRequestToBorrowListing (data: ApproveRequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
+let approveRequestToBorrowListing (data: ApproveRequestToBorrowListingData): Result<DomainEvent, AppError> =
     if data.OwnerId <> data.ApproverId then
         AppError.toDomain ListingNotEligibleForOperation
     else
         match data.ListingStatus with
         | RequestedToBorrow borrowerId ->
-            let event = Event.RequestToBorrowApproved { ListingId = data.ListingId; BorrowerId = borrowerId }
-            (event, Borrowed borrowerId) |> Ok
+            DomainEvent.RequestToBorrowApproved { BorrowerId = borrowerId } |> Ok
         | Borrowed _ -> AppError.toDomain ListingIsAlreadyBorrowed
         | Available -> AppError.toDomain ListingIsNotRequested
 
 type ReturnBorrowedListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
+    { ListingStatus: ListingStatus
       BorrowerId: UserId }
 
-let returnBorrowedListing (data: ReturnBorrowedListingData): Result<Event * ListingStatus, AppError> =
+let returnBorrowedListing (data: ReturnBorrowedListingData): Result<DomainEvent, AppError> =
     match data.ListingStatus with
     | Borrowed borrowerId when data.BorrowerId = borrowerId ->
-        let event = Event.ListingReturned { ListingId = data.ListingId; BorrowerId = borrowerId }
-        (event, Available) |> Ok
+        DomainEvent.ListingReturned { BorrowerId = borrowerId } |> Ok
     | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
     | RequestedToBorrow _
     | Available -> AppError.toDomain ListingIsNotBorrowed
+
+let executeStatusChangeCommand (listing: BookListing) (args: ChangeListingStatusArgs) =
+    match args.Command with
+    | RequestToBorrow ->
+        requestToBorrowListing
+            { ListingStatus = listing.Status
+              OwnerId = listing.OwnerId
+              RequesterId = args.ChangeRequestedByUserId }
+    | CancelRequestToBorrow ->
+        cancelRequestToBorrowListing
+            { ListingStatus = listing.Status
+              RequesterId = args.ChangeRequestedByUserId }
+    | ApproveRequestToBorrow ->
+        approveRequestToBorrowListing
+            { ListingStatus = listing.Status
+              OwnerId = listing.OwnerId
+              ApproverId = args.ChangeRequestedByUserId }
+    | ReturnBorrowedListing ->
+        returnBorrowedListing
+            { ListingStatus = listing.Status
+              BorrowerId = args.ChangeRequestedByUserId }
