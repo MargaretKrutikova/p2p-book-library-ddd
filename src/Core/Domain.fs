@@ -25,8 +25,16 @@ module Errors =
         static member toDomain error = Domain error |> Error
         
 module Types =
-    type UserId = private UserId of Guid
-    type ListingId = private ListingId of Guid
+    type UserId =
+        private | UserId of Guid
+        static member value ((UserId id)) = id
+        static member create guid = UserId guid
+        
+    type ListingId =
+        private | ListingId of Guid
+        static member value ((ListingId id)) = id
+        static member create guid = ListingId guid
+        
     type Title = private Title of string
     type Author = private Author of string
 
@@ -45,14 +53,6 @@ module Types =
           Author: Author
           Title: Title
           Status: ListingStatus }
-
-    module UserId =
-        let value ((UserId id)) = id
-        let create guid = UserId guid
-
-    module ListingId =
-        let value ((ListingId id)) = id
-        let create guid = ListingId guid
 
     module Title =
         open Errors
