@@ -3,7 +3,8 @@ module Core.Commands
 open Core.Domain.Types
 
 type PublishBookListingArgs =
-    { UserId: UserId
+    { NewListingId: ListingId
+      UserId: UserId
       Title: string
       Author: string }
 

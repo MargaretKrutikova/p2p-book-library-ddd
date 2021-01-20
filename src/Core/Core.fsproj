@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -9,9 +9,9 @@
     <Compile Include="Events.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="Logic.fs" />
+    <Compile Include="Aggregate.fs" />
     <Compile Include="EventStore.fs" />
     <Compile Include="Persistence.fs" />
-    <Compile Include="Aggregate.fs" />
 
     <Compile Include="CommandHandlers.fs" />
 

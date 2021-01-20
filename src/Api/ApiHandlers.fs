@@ -8,6 +8,7 @@ open Core.Domain.Types
 open Core.Handlers.QueryHandlers
 
 open Core.QueryModels
+open Core.User
 open FsToolkit.ErrorHandling
 open System
 open FsToolkit.ErrorHandling.Operator.TaskResult
@@ -17,9 +18,9 @@ module ModelConversions =
     let toUserListingsOutputModel listings: UserListingsOutputModel = { Listings = listings }
 
 module CommandArgsConversions =
-    let toPublishBookListingArgs (listingId: Guid) (listingModel: ListingPublishInputModel): PublishBookListingArgs =
-        { NewListingId = ListingId.create listingId
-          UserId = UserId.create listingModel.UserId
+    let toPublishBookListingArgs listingId (listingModel: ListingPublishInputModel): PublishBookListingArgs =
+        { UserId = UserId.create listingModel.UserId
+          NewListingId = listingId
           Title = listingModel.Title
           Author = listingModel.Author }
 
@@ -28,7 +29,7 @@ module CommandArgsConversions =
           Name = inputModel.Name }
     
     let private toChangeListingStatusArgs' (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
-        { ChangeRequestedByUserId = userId |> UserId.create; ListingId = ListingId.create listingId; Command = command }
+        { ChangeRequestedByUserId = userId |> UserId.create; Command = command }
 
     let toChangeListingStatusArgs (inputModel: ChangeListingStatusInputModel): ChangeListingStatusArgs =
         let command =
@@ -64,9 +65,9 @@ let registerUser (root: CompositionRoot) (userModel: UserRegisterInputModel) =
     taskResult {
         let userId = Guid.NewGuid()
 
-        let command =
+        let command: Command =
             CommandArgsConversions.toRegisterUserArgs userId userModel
-            |> Command.RegisterUser
+            |> registerUser 
 
         do! root.CommandHandler command
             |> TaskResult.mapError fromAppError
@@ -84,7 +85,7 @@ let publishListing (root: CompositionRoot) (listingModel: ListingPublishInputMod
             CommandArgsConversions.toPublishBookListingArgs listingId listingModel
             |> Command.PublishBookListing
 
-        do! root.CommandHandler command
+        do! root.CommandHandler (listingId |> ListingId.create) command
             |> TaskResult.mapError fromAppError
             |> TaskResult.ignore
 
@@ -97,8 +98,10 @@ let changeListingStatus (root: CompositionRoot) (inputModel: ChangeListingStatus
         let command =
             CommandArgsConversions.toChangeListingStatusArgs inputModel
             |> Command.ChangeListingStatus
+        
+        let listingId = inputModel.ListingId |> ListingId.create
 
-        do! root.CommandHandler command |> TaskResult.mapError fromAppError |> TaskResult.ignore
+        do! root.CommandHandler listingId command |> TaskResult.mapError fromAppError |> TaskResult.ignore
         return! getExistingListingById root.QueryHandler inputModel.ListingId
     }
 
