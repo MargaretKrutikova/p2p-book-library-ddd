@@ -84,7 +84,7 @@ let returnBorrowedListing (data: ReturnBorrowedListingData): Result<DomainEvent,
     | RequestedToBorrow _
     | Available -> AppError.toDomain ListingIsNotBorrowed
 
-let executeStatusChangeCommand (listing: BookListing) (args: ChangeListingStatusArgs) =
+let changeListingStatus (listing: BookListing) (args: ChangeListingStatusArgs) =
     match args.Command with
     | RequestToBorrow ->
         requestToBorrowListing

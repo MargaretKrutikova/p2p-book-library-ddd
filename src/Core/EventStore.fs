@@ -2,13 +2,11 @@ module Core.EventStore
 
 open System
 open System.Threading.Tasks
-open Core.Events
 
 type EventId = Guid
 type StreamId = Guid
-   
-type EventRead = { Id: EventId; StreamId: StreamId; CreatedAtUtc: DateTime; Data: DomainEvent }
-type EventWrite = { StreamId: StreamId; Data: DomainEvent }
+type EventRead = { Id: EventId; StreamId: StreamId; CreatedAtUtc: DateTime; Name: string; Data: string }
+type EventWrite = { StreamId: StreamId; Data: string; Name: string }
 
 type EventStoreError =
     | DbError
