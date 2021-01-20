@@ -42,7 +42,7 @@ module Mapping =
         { Data = data; Name = name; StreamId = aggregateId }
         
 type CommandResult = Task<Result<DomainEvent list, AppError>>
-type CommandHandler = Command -> CommandResult
+type CommandHandler = ListingId -> Command -> CommandResult
 
 let private checkUserExists (getUserById: GetUserById) userId: Task<Result<unit, AppError>> =
     getUserById userId
@@ -52,6 +52,7 @@ let private checkUserExists (getUserById: GetUserById) userId: Task<Result<unit,
 let private mapFromEventStoreError =
     function | DbError | ExpectedVersionMismatch -> ServiceError
 
+// TODO: move outside into infrastructure
 let private validate (persistence: Persistence) command =
      match command with
      | Command.PublishBookListing args ->
@@ -66,19 +67,13 @@ let getCurrentState (store: EventStore) (aggregateId: StreamId) =
     |> TaskResult.map mapper
     |> TaskResult.mapError mapFromEventStoreError
 
-let private getAggregateId command =
-    match command with
-     | Command.PublishBookListing args -> args.NewListingId
-     | Command.ChangeListingStatus args -> args.ListingId 
-    |> ListingId.value
-    
 let handleCommand (persistence: Persistence) (store: EventStore): CommandHandler =
-    fun command ->
+    fun listingId command ->
         taskResult {
             do! validate persistence command
-            let aggregateId = getAggregateId command
             
-            let! state = getCurrentState store aggregateId
+            let aggregateId = ListingId.value listingId
+            let! state = getCurrentState store aggregateId 
             let! events = listingAggregate.Execute state command
             
             do! events

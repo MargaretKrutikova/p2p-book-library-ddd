@@ -11,10 +11,14 @@ type Aggregate<'state, 'command, 'event> = {
     Execute: 'state -> 'command -> Result<'event list, AppError>
 }
 
-type ListingAggregate = Aggregate<BookListing option, Command, DomainEvent>
+type ListingAggregateState =
+    | Existing of BookListing
+    | NonExisting
 
-let init = None
-let private applyEvent (listing: BookListing) (event: DomainEvent): BookListing =
+type ListingAggregate = Aggregate<ListingAggregateState, Command, DomainEvent>
+
+let init = NonExisting
+let applyEvent (listing: BookListing) (event: DomainEvent): BookListing =
     match event with
     | DomainEvent.ListingRequestedToBorrow args -> { listing with Status = RequestedToBorrow args.RequesterId }
     | DomainEvent.RequestToBorrowCancelled _ -> { listing with Status = Available }
@@ -22,20 +26,20 @@ let private applyEvent (listing: BookListing) (event: DomainEvent): BookListing 
     | DomainEvent.ListingReturned _ -> { listing with Status = Available }
     | _ -> listing
 
-let apply (listingOption: BookListing option) (event: DomainEvent): BookListing option =
-    match listingOption, event with
-    | None, DomainEvent.BookListingPublished args -> args.Listing |> Some
-    | Some listing, event -> applyEvent listing event |> Some
-    | _ -> None
+let apply (state: ListingAggregateState) (event: DomainEvent): ListingAggregateState =
+    match state, event with
+    | NonExisting, DomainEvent.BookListingPublished args -> args.Listing |> Existing
+    | Existing listing, event -> applyEvent listing event |> Existing
+    | _ -> NonExisting
 
 let execute state command =
     match command, state with
-    | Command.PublishBookListing args, None ->
+    | Command.PublishBookListing args, NonExisting ->
         Logic.publishBookListing args
             |> Result.map (fun listing -> BookListingPublished { Listing = listing } |> List.singleton)
-    | Command.ChangeListingStatus args, Some listing ->
+    | Command.ChangeListingStatus args, Existing listing ->
         Logic.changeListingStatus listing args |> Result.map List.singleton
-    | Command.ChangeListingStatus _, None -> ListingNotFound |> AppError.toValidation
+    | Command.ChangeListingStatus _, NonExisting -> ListingNotFound |> AppError.toValidation
     | _ -> List.empty |> Ok
 
-let listingAggregate = { Init = init; Apply = apply; Execute = execute }
+let listingAggregate: ListingAggregate = { Init = init; Apply = apply; Execute = execute }

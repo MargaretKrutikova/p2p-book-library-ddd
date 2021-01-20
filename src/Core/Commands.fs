@@ -3,8 +3,7 @@ module Core.Commands
 open Core.Domain.Types
 
 type PublishBookListingArgs =
-    { NewListingId: ListingId
-      UserId: UserId
+    { UserId: UserId
       Title: string
       Author: string }
 
@@ -16,7 +15,6 @@ type ChangeListingStatusCommand =
 
 type ChangeListingStatusArgs =
     { ChangeRequestedByUserId: UserId
-      ListingId: ListingId
       Command: ChangeListingStatusCommand }
 
 [<RequireQualifiedAccess>]
