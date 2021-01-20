@@ -8,8 +8,6 @@ type PublishBookListingArgs =
       Title: string
       Author: string }
 
-type RegisterUserArgs = { UserId: UserId; Name: string }
-
 type ChangeListingStatusCommand =
     | RequestToBorrow
     | CancelRequestToBorrow
@@ -23,6 +21,5 @@ type ChangeListingStatusArgs =
 
 [<RequireQualifiedAccess>]
 type Command =
-    | RegisterUser of RegisterUserArgs
     | PublishBookListing of PublishBookListingArgs
     | ChangeListingStatus of ChangeListingStatusArgs

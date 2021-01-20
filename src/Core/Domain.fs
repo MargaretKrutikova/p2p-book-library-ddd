@@ -23,7 +23,8 @@ module Errors =
         | Domain of DomainError
         | ServiceError
         static member toDomain error = Domain error |> Error
-        
+        static member toValidation error = Validation error |> Error
+
 module Types =
     type UserId =
         private | UserId of Guid
@@ -43,7 +44,6 @@ module Types =
         | RequestedToBorrow of UserId
         | Borrowed of UserId
         
-    // TODO: use smart constructor
     type UserName = string
     type User = { UserId: UserId; Name: UserName }
 
