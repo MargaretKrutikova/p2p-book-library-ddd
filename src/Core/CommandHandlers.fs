@@ -16,14 +16,8 @@ type CommandHandler = Command -> CommandResult
 
 module CommandPersistenceOperations =
     type DbReadError = | MissingRecord
-
     type DbResult<'a> = Task<Result<'a, DbReadError>>
     type UserReadModel = { Id: UserId; Name: string }
-
-    type ListingReadModel =
-        { Id: ListingId
-          OwnerId: UserId
-          ListingStatus: ListingStatus }
 
     type GetUserById = UserId -> DbResult<UserReadModel>
     type GetListingById = ListingId -> DbResult<ListingReadModel>
@@ -73,39 +67,14 @@ let registerUser (createUser: CommandPersistenceOperations.CreateUser) (args: Re
         return None
     }
 
-let changeListingStatus (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
+let executeChangeStatusCommand (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
     taskResult {
         do! checkUserExists persistence.GetUserById args.ChangeRequestedByUserId
         let! listing =
             persistence.GetListingById args.ListingId
             |> TaskResult.mapError mapFromDbListingError
 
-        let! (event, newStatus) =
-            match args.Command with
-            | RequestToBorrow ->
-                requestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      OwnerId = listing.OwnerId
-                      RequesterId = args.ChangeRequestedByUserId }
-            | CancelRequestToBorrow ->
-                cancelRequestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      RequesterId = args.ChangeRequestedByUserId }
-            | ApproveRequestToBorrow ->
-                approveRequestToBorrowListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      OwnerId = listing.OwnerId
-                      ApproverId = args.ChangeRequestedByUserId }
-            | ReturnBorrowedListing ->
-                returnBorrowedListing
-                    { ListingId = listing.Id
-                      ListingStatus = listing.ListingStatus
-                      BorrowerId = args.ChangeRequestedByUserId }
-
-        // TODO: persist event instead
+        let! (event, newStatus) = changeListingStatus listing args
         do! persistence.UpdateListingStatus listing.Id newStatus
             |> TaskResult.mapError (fun _ -> ServiceError)
         
@@ -117,4 +86,4 @@ let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
         match command with
         | Command.RegisterUser args -> registerUser persistence.CreateUser args
         | Command.PublishBookListing args -> publishBookListing persistence args
-        | Command.ChangeListingStatus args -> changeListingStatus persistence args
+        | Command.ChangeListingStatus args -> executeChangeStatusCommand persistence args

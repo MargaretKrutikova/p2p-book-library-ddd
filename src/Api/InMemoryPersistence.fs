@@ -4,6 +4,7 @@ open System.Threading.Tasks
 open Core.Domain.Types
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
+open Core.Logic
 open Core.QueryModels
 open FsToolkit.ErrorHandling
 open System
@@ -90,7 +91,7 @@ module InMemoryPersistence =
                 |> Result.map (fun listing ->
                     { Id = listing.ListingId
                       OwnerId = listing.OwnerId
-                      ListingStatus = listing.Status }: CommandPersistenceOperations.ListingReadModel)
+                      Status = listing.Status }: ListingReadModel)
                 |> Task.FromResult
 
         let getAllPublishedListings: QueryPersistenceOperations.GetAllPublishedListings =

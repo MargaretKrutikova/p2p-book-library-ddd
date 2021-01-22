@@ -26,68 +26,62 @@ let publishBookListing (dto: PublishBookListingArgs): Result<BookListing, AppErr
         return bookListing
     }
 
-type RequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
+type ListingReadModel =
+    { Id: ListingId
       OwnerId: UserId
-      RequesterId: UserId }
+      Status: ListingStatus }
 
-let requestToBorrowListing (data: RequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
-    if data.OwnerId = data.RequesterId then
+let requestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+    let requesterId = args.ChangeRequestedByUserId
+    if listing.OwnerId = requesterId then
         AppError.toDomain ListingNotEligibleForOperation
     else
-        match data.ListingStatus with
+        match listing.Status with
         | Available ->
-            let event = Event.ListingRequestedToBorrow { ListingId = data.ListingId; RequesterId = data.RequesterId }
-            (event, RequestedToBorrow data.RequesterId) |> Ok
-        | RequestedToBorrow borrowerId when borrowerId = data.RequesterId ->
+            let event = Event.ListingRequestedToBorrow { ListingId = listing.Id; RequesterId = requesterId }
+            (event, RequestedToBorrow requesterId) |> Ok
+        | RequestedToBorrow borrowerId when borrowerId = requesterId ->
             AppError.toDomain ListingAlreadyRequestedByUser
         | RequestedToBorrow _
         | Borrowed _ -> AppError.toDomain BorrowErrorListingIsNotAvailable
 
-type CancelRequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
-      RequesterId: UserId }
-
-let cancelRequestToBorrowListing (data: CancelRequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
-    match data.ListingStatus with
-    | RequestedToBorrow borrowerId when borrowerId = data.RequesterId ->
-        let event = Event.RequestToBorrowCancelled { ListingId = data.ListingId; RequesterId = data.RequesterId }
+let cancelRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+    let requesterId = args.ChangeRequestedByUserId
+    match listing.Status with
+    | RequestedToBorrow borrowerId when borrowerId = requesterId ->
+        let event = Event.RequestToBorrowCancelled { ListingId = listing.Id; RequesterId = requesterId }
         (event, Available) |> Ok
-    | Borrowed borrowerId when borrowerId = data.RequesterId ->
+    | Borrowed borrowerId when borrowerId = requesterId ->
         AppError.toDomain ListingIsAlreadyApproved
     | Available -> AppError.toDomain ListingIsNotRequested
     | RequestedToBorrow _
     | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
 
-type ApproveRequestToBorrowListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
-      OwnerId: UserId
-      ApproverId: UserId }
-
-let approveRequestToBorrowListing (data: ApproveRequestToBorrowListingData): Result<Event * ListingStatus, AppError> =
-    if data.OwnerId <> data.ApproverId then
+let approveRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+    let approverId = args.ChangeRequestedByUserId
+    if listing.OwnerId <> approverId then
         AppError.toDomain ListingNotEligibleForOperation
     else
-        match data.ListingStatus with
+        match listing.Status with
         | RequestedToBorrow borrowerId ->
-            let event = Event.RequestToBorrowApproved { ListingId = data.ListingId; BorrowerId = borrowerId }
+            let event = Event.RequestToBorrowApproved { ListingId = listing.Id; BorrowerId = borrowerId }
             (event, Borrowed borrowerId) |> Ok
         | Borrowed _ -> AppError.toDomain ListingIsAlreadyBorrowed
         | Available -> AppError.toDomain ListingIsNotRequested
 
-type ReturnBorrowedListingData =
-    { ListingId: ListingId
-      ListingStatus: ListingStatus
-      BorrowerId: UserId }
-
-let returnBorrowedListing (data: ReturnBorrowedListingData): Result<Event * ListingStatus, AppError> =
-    match data.ListingStatus with
-    | Borrowed borrowerId when data.BorrowerId = borrowerId ->
-        let event = Event.ListingReturned { ListingId = data.ListingId; BorrowerId = borrowerId }
+let returnBorrowedListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+    let borrowerId = args.ChangeRequestedByUserId
+    match listing.Status with
+    | Borrowed currentBorrowerId when borrowerId = currentBorrowerId ->
+        let event = Event.ListingReturned { ListingId = listing.Id; BorrowerId = currentBorrowerId }
         (event, Available) |> Ok
     | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
     | RequestedToBorrow _
     | Available -> AppError.toDomain ListingIsNotBorrowed
+
+let changeListingStatus (listing: ListingReadModel) (args: ChangeListingStatusArgs) =
+    match args.Command with
+    | RequestToBorrow -> requestToBorrowListing listing args
+    | CancelRequestToBorrow -> cancelRequestToBorrowListing listing args
+    | ApproveRequestToBorrow -> approveRequestToBorrowListing listing args
+    | ReturnBorrowedListing -> returnBorrowedListing listing args
