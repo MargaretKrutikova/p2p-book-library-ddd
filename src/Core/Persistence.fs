@@ -2,8 +2,6 @@ module Core.Persistence
 
 open System.Threading.Tasks
 open Core.Domain.Types
-open FsToolkit.ErrorHandling.TaskResultCE
-open FsToolkit.ErrorHandling
 
 type DbReadError = | MissingRecord
 type DbWriteError = | WriteError
@@ -20,12 +18,3 @@ type Persistence =
     { GetUserById: GetUserById
       CreateUser: CreateUser }
     
-
-type RegisterUserArgs = { UserId: UserId; Name: string }
-
-let registerUser (persistence: Persistence) (args: RegisterUserArgs) =
-    taskResult {
-        let user: User = { UserId = args.UserId; Name = args.Name }
-        do! persistence.CreateUser user |> TaskResult.mapError (fun _ -> ServiceError)
-        return None
-    }

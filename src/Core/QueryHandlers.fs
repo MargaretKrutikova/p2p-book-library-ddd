@@ -1,7 +1,11 @@
 module Core.Handlers.QueryHandlers
 
 open System
+open System.Collections.Generic
 open System.Threading.Tasks
+open Core.EventStore
+open Core.Events
+open Core.Handlers.CommandHandlers
 open Core.QueryModels
 open FsToolkit.ErrorHandling.Operator.TaskResult
 open FsToolkit.ErrorHandling
@@ -15,18 +19,67 @@ module QueryPersistenceOperations =
     type GetUserByName = string -> DbResult<UserDto option>
     type GetListingById = ListingId -> DbResult<BookListingDto option>
 
+type ReadEventStore = {
+    GetAll: unit -> EventStoreReadResult
+}
+
 type QueryPersistenceOperations =
     { GetAllPublishedListings: QueryPersistenceOperations.GetAllPublishedListings
       GetListingsByUserId: QueryPersistenceOperations.GetListingsByOwnerId
       GetUserByName: QueryPersistenceOperations.GetUserByName
       GetListingById: QueryPersistenceOperations.GetListingById }
 
+type ListingHistoryEntry = 
+    | RequestedToBorrow of userId: Guid
+    | CancelledRequestToBorrow of userId: Guid
+    | ApprovedRequestToBorrow of userId: Guid
+    | Returned of userId: Guid
+    
+type ListingHistoryModel = (ListingHistoryEntry * DateTime) list
+type ListingStatusReadModel =
+    | Available
+    | RequestedToBorrow of requestedByUserId: Guid
+    | Borrowed of borrowedByUserId: Guid
+
+type ListingReadModel = {
+   ListingId: Guid
+   OwnerId: Guid
+   Author: string
+   Title: string
+   Status: ListingStatusReadModel
+}
+
+let apply (listing: ListingReadModel option) (envelope: EventEnvelope)=
+    match envelope.Event, listing with
+    | DomainEvent.BookListingPublished args, None ->
+        { ListingId = args.ListingId
+          OwnerId = args.OwnerId
+          Author = args.Author
+          Title = args.Title
+          Status = Available } |> Some
+    | ListingRequestedToBorrow args, Some listing ->
+        { listing with Status = RequestedToBorrow args.RequesterId } |> Some
+    | RequestToBorrowCancelled args, Some listing ->
+        { listing with Status = Available } |> Some
+    | RequestToBorrowApproved args, Some listing ->
+        { listing with Status = Borrowed args.BorrowerId } |> Some
+    | ListingReturned args, Some listing ->
+        { listing with Status = Available } |> Some
+    | _ -> listing
+
+let applyReadEvent (listings: ListingReadModel list) (envelope: EventEnvelope): ListingReadModel list =
+    let existingListing = listings |> Seq.tryFind (fun l -> l.ListingId = envelope.ListingId)
+    let newListing = apply existingListing envelope
+    listings // TODO: fix    
+
 type GetAllPublishedBookListings = unit -> QueryResult<BookListingDto list>
-let getAllPublishedBookListings (getListings: QueryPersistenceOperations.GetAllPublishedListings)
-                                : GetAllPublishedBookListings =
+let getAllPublishedBookListings (store: ReadEventStore): GetAllPublishedBookListings =
     fun () ->
-        getListings ()
-        |> TaskResult.mapError (fun _ -> InternalError)
+        taskResult {
+            let! events = store.GetAll () |> TaskResult.mapError (fun _ -> InternalError)
+            
+            return []
+        }
 
 type GetUserBookListings = UserId -> QueryResult<UserBookListingDto list>
 let getUserBookListings (getListingsByUserId: QueryPersistenceOperations.GetListingsByOwnerId): GetUserBookListings =
