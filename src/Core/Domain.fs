@@ -1,34 +1,48 @@
 namespace Core.Domain
 
 open System
-open FsToolkit.ErrorHandling.ResultCE
 
 module Errors =
     type ValidationError =
         | TitleInvalid
         | AuthorInvalid
         | UserNotFound
-        | BookListingNotFound
+        | ListingNotFound
 
     type DomainError =
-        | NotEligibleToBorrow
-        | CantBorrowBeforeRequestIsApproved
+        | ListingNotEligibleForOperation
+        | ListingAlreadyRequestedByUser
+        | BorrowErrorListingIsNotAvailable 
+        | ListingIsAlreadyBorrowed
+        | ListingIsNotRequested
+        | ListingIsNotBorrowed
+        | ListingIsAlreadyApproved
 
     type AppError =
         | Validation of ValidationError
         | Domain of DomainError
         | ServiceError
-
+        static member toDomain error = Domain error |> Error
+        
 module Types =
-    type UserId = private UserId of Guid
-    type ListingId = private ListingId of Guid
+    type UserId =
+        private | UserId of Guid
+        static member value ((UserId id)) = id
+        static member create guid = UserId guid
+        
+    type ListingId =
+        private | ListingId of Guid
+        static member value ((ListingId id)) = id
+        static member create guid = ListingId guid
+        
     type Title = private Title of string
     type Author = private Author of string
 
     type ListingStatus =
         | Available
-        | RequestedToBorrow
-        | Borrowed
+        | RequestedToBorrow of UserId
+        | Borrowed of UserId
+        
     // TODO: use smart constructor
     type UserName = string
     type Email = string
@@ -46,18 +60,10 @@ module Types =
 
     type BookListing =
         { ListingId: ListingId
-          UserId: UserId
+          OwnerId: UserId
           Author: Author
           Title: Title
           Status: ListingStatus }
-
-    module UserId =
-        let value ((UserId id)) = id
-        let create guid = UserId guid
-
-    module ListingId =
-        let value ((ListingId id)) = id
-        let create guid = ListingId guid
 
     module Title =
         open Errors
@@ -82,70 +88,3 @@ module Types =
                 value |> Author |> Ok
 
         let value ((Author str)) = str
-
-module Messages =
-    open Types
-
-    type PublishBookListingArgs =
-        { NewListingId: ListingId
-          UserId: UserId
-          Title: string
-          Author: string }
-
-    type RequestToBorrowBookArgs =
-        { ListingId: ListingId
-          BorrowerId: UserId }
-
-    type BorrowBookArgs =
-        { ListingId: ListingId
-          BorrowerId: UserId }
-
-    type RegisterUserArgs = {
-        UserId: UserId
-        Name: string
-        Email: string
-        IsSubscribedToUserListingActivity: bool
-    }
-
-    [<RequireQualifiedAccess>]
-    type Command =
-        | RegisterUser of RegisterUserArgs
-        | PublishBookListing of PublishBookListingArgs
-        | RequestToBorrowBook of RequestToBorrowBookArgs
-        | BorrowBook of BorrowBookArgs
-
-    [<RequireQualifiedAccess>]
-    type Event =
-        | BookListingPublished of ListingId
-        | RequestedToBorrowBook of ListingId * BorrowerId: UserId
-        | BorrowedBook of ListingId * BorrowerId: UserId
-        | UserRegistered of RegisterUserArgs
-        
-    [<RequireQualifiedAccess>]
-    type Query =
-        | GetAllPublishedBookListings
-        | GetUsersPublishedBookListings of UserId
-
-module Logic =
-    open Errors
-    open Types
-
-    let publishBookListing (dto: Messages.PublishBookListingArgs): Result<BookListing, AppError> =
-        result {
-            let! title =
-                Title.create dto.Title
-                |> Result.mapError Validation
-
-            let! author =
-                Author.create dto.Author
-                |> Result.mapError Validation
-
-            let bookListing: BookListing =
-                { ListingId = dto.NewListingId
-                  UserId = dto.UserId
-                  Author = author
-                  Title = title
-                  Status = Available }
-
-            return bookListing
-        }

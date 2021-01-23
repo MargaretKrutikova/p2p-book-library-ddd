@@ -5,6 +5,7 @@ open Core.Handlers.QueryHandlers
 
 open System
 open System.Data
+open Core.QueryModels
 open FsToolkit.ErrorHandling
 
 open Dapper.FSharp
@@ -52,23 +53,24 @@ module Tables =
   }
 
 module Conversions =
+    let dummyUserId = failwith "implement borrow requests with user ids of borrowers"
     let toDbListingStatus (status: ListingStatus): Tables.ListingStatus =
       match status with
-      | Available -> Tables.ListingStatus.Available
-      | Borrowed -> Tables.ListingStatus.Borrowed
-      | RequestedToBorrow -> Tables.ListingStatus.RequestedToBorrow
+      | ListingStatus.Available -> Tables.ListingStatus.Available
+      | ListingStatus.Borrowed _ -> Tables.ListingStatus.Borrowed
+      | ListingStatus.RequestedToBorrow _ -> Tables.ListingStatus.RequestedToBorrow
     
     let fromDbListingStatus (status: Tables.ListingStatus): ListingStatus =
       match status with
-      | Tables.ListingStatus.Available -> Available
-      | Tables.ListingStatus.Borrowed -> Borrowed
-      | Tables.ListingStatus.RequestedToBorrow -> RequestedToBorrow
+      | Tables.ListingStatus.Available -> ListingStatus.Available
+      | Tables.ListingStatus.Borrowed -> ListingStatus.Borrowed dummyUserId
+      | Tables.ListingStatus.RequestedToBorrow -> ListingStatus.RequestedToBorrow dummyUserId
       | _ -> failwith "Unknown listing status"
     
     let toDbListing (listing: BookListing): Tables.Listings =
       {
          id = listing.ListingId |> ListingId.value
-         user_id = listing.UserId |> UserId.value
+         user_id = listing.OwnerId |> UserId.value
          author = listing.Author |> Author.value
          title = listing.Title |> Title.value
          status = toDbListingStatus listing.Status
@@ -121,21 +123,21 @@ module QueryPersistenceImpl =
   open QueryPersistenceOperations
   
   let private toUserBookListingDto (listing: Tables.Listings): UserBookListingDto = {
-    ListingId = ListingId.create listing.id
+    ListingId = listing.id
     Author = listing.author
     Title = listing.title
-    Status = Conversions.fromDbListingStatus listing.status 
+    Status = failwith "" 
   }
 
   let private toUserDto (dbUser: Tables.Users): UserDto =
       {
-        Id = UserId.create dbUser.id
+        Id = dbUser.id
         Name = dbUser.name
         Email = "" // TODO: add to db
         IsSubscribedToUserListingActivity = true 
       }
   
-  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByUserId =
+  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByOwnerId =
     fun userId ->
       select {
           table Tables.Listings.tableName

@@ -1,57 +1,60 @@
 module Core.Handlers.CommandHandlers
 
+open System
 open System.Threading.Tasks
-open Core.Domain
-open Core.Domain.Messages
+open Core.Events
+open Core.Logic
+open Core.Commands
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
 
 open Core.Domain.Errors
 open Core.Domain.Types
 
-type CommandResult = Task<Result<Messages.Event, AppError>>
+type CommandResult = Task<Result<EventEnvelope option, AppError>>
 type CommandHandler = Command -> CommandResult
 
-module CommandPersistenceOperations = 
-  type DbReadError =
-    | MissingRecord
+module CommandPersistenceOperations =
+    type DbReadError = | MissingRecord
+    type DbResult<'a> = Task<Result<'a, DbReadError>>
+    type UserReadModel = { Id: UserId; Name: string }
 
-  type DbResult<'a> = Task<Result<'a, DbReadError>>
-  type UserReadModel = {
-    Id: UserId
-    Name: string
-  }
-  type GetUserById = UserId -> DbResult<UserReadModel>
+    type GetUserById = UserId -> DbResult<UserReadModel>
+    type GetListingById = ListingId -> DbResult<ListingReadModel>
 
-  type DbWriteError =
-    | WriteError
+    type DbWriteError = | WriteError
 
-  type DbWriteResult = Task<Result<unit, DbWriteError>>
-  type CreateUser = User -> DbWriteResult
-  type CreateListing = BookListing -> DbWriteResult
-  type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
+    type DbWriteResult = Task<Result<unit, DbWriteError>>
+    type CreateUser = User -> DbWriteResult
+    type CreateListing = BookListing -> DbWriteResult
+    type UpdateListingStatus = ListingId -> ListingStatus -> DbWriteResult
 
-type CommandPersistenceOperations = {
-  GetUserById: CommandPersistenceOperations.GetUserById
-  CreateListing: CommandPersistenceOperations.CreateListing
-  CreateUser: CommandPersistenceOperations.CreateUser
-}
+type CommandPersistenceOperations =
+    { GetUserById: CommandPersistenceOperations.GetUserById
+      GetListingById: CommandPersistenceOperations.GetListingById
+      CreateListing: CommandPersistenceOperations.CreateListing
+      CreateUser: CommandPersistenceOperations.CreateUser
+      UpdateListingStatus: CommandPersistenceOperations.UpdateListingStatus }
 
 let private checkUserExists (getUserById: CommandPersistenceOperations.GetUserById) userId: Task<Result<unit, AppError>> =
-  getUserById userId 
-  |> TaskResult.mapError (function | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
-  |> TaskResult.ignore
+    getUserById userId
+    |> TaskResult.mapError (function
+        | CommandPersistenceOperations.MissingRecord -> Validation UserNotFound)
+    |> TaskResult.ignore
 
-type PublishBookListing = CommandPersistenceOperations.GetUserById -> CommandPersistenceOperations.CreateListing -> PublishBookListingArgs -> CommandResult
-let publishBookListing: PublishBookListing =
-    fun getUserById createListing args ->
+let private mapFromDbListingError =
+    function
+    | CommandPersistenceOperations.MissingRecord -> Validation ListingNotFound
+
+let publishBookListing (operations: CommandPersistenceOperations) (args: PublishBookListingArgs): CommandResult = 
     taskResult {
-      do! checkUserExists getUserById args.UserId
-
-      let! bookListing = Logic.publishBookListing args 
-      do! createListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
-      
-      return Event.BookListingPublished args.NewListingId 
+        do! checkUserExists operations.GetUserById args.UserId
+        let! bookListing = publishBookListing args
+        
+        do! operations.CreateListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
+        let event = Event.BookListingPublished { Listing = bookListing }
+        
+        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
     }
 
 type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
@@ -70,17 +73,23 @@ let registerUser: RegisterUser =
         return Event.UserRegistered args
      }
 
-//type RequestToBorrowBook =
-//  PersistenceOperations.GetUserById -> PersistenceOperations.GetListingById -> Commands.UpdateListing -> Messages.RequestToBorrowBookArgs -> CommandResult
-//let requestToBorrowBook: RequestToBorrowBook =
-//  fun getUserById getListingById updateListing args ->
-//    taskResult {
-//      return ()  
-//    }
+let executeChangeStatusCommand (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
+    taskResult {
+        do! checkUserExists persistence.GetUserById args.ChangeRequestedByUserId
+        let! listing =
+            persistence.GetListingById args.ListingId
+            |> TaskResult.mapError mapFromDbListingError
+
+        let! (event, newStatus) = changeListingStatus listing args
+        do! persistence.UpdateListingStatus listing.Id newStatus
+            |> TaskResult.mapError (fun _ -> ServiceError)
+        
+        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+    }
 
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =
-  fun command ->
-    match command with
-    | Command.RegisterUser args -> registerUser persistence.CreateUser args
-    | Command.PublishBookListing args -> publishBookListing persistence.GetUserById persistence.CreateListing args
-    | _ -> failwith ""
+    fun command ->
+        match command with
+        | Command.RegisterUser args -> registerUser persistence.CreateUser args
+        | Command.PublishBookListing args -> publishBookListing persistence args
+        | Command.ChangeListingStatus args -> executeChangeStatusCommand persistence args

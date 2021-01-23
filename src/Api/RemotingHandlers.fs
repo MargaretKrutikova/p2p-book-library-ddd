@@ -1,4 +1,4 @@
-module Api.BookListing.RemotingHandlers
+module Api.RemotingHandlers
 
 open Api.Models
 open Api.ApiHandlers
@@ -28,8 +28,12 @@ let private createUserApiFromContext (ctx:HttpContext): IUserApi =
 let private createBookListingApiFromContext (ctx: HttpContext): IBookListingApi =
     let root = ctx.GetService<CompositionRoot>()
     {
-        getByUserId = getUserListings root >> taskToApiResult
         publish = publishListing root >> taskToApiResult
+        changeListingStatus = changeListingStatus root >> taskToApiResult
+        
+        getByUserId = getUserListings root >> taskToApiResult
+        getAllListings = getAllPublishedListings root >> taskToApiResult
+        getUserActivity = getUserActivity root >> taskToApiResult 
     }
 
 let createUserApiHandler () : HttpHandler = 

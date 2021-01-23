@@ -24,9 +24,7 @@ let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHand
 
 type CompositionRoot = {
     CommandHandler: CommandHandler
-    // GetAllPublishedListings: GetAllPublishedBookListings
-    GetUserBookListings: GetUserBookListings
-    GetUserByName: GetUserByName
+    QueryHandler: QueryHandler
 }
 
 let private createEmailActorDependencies sendEmail (infrastructurePersistence: InfrastructurePersistenceOperations): EmailSenderSupervisor.Dependencies =
@@ -50,8 +48,6 @@ let compose
   let commandHandler = handleCommand commandPersistence |> commandHandlerWithPublish system 
   
   {
-      CommandHandler = commandHandler 
-      // GetAllPublishedListings = getAllPublishedBookListings queryPersistence.GetAllListings
-      GetUserBookListings = getUserBookListings queryPersistence.GetListingsByUserId
-      GetUserByName = getUserByName queryPersistence.GetUserByName
+      CommandHandler = commandHandler
+      QueryHandler = createQueryHandler queryPersistence
   }

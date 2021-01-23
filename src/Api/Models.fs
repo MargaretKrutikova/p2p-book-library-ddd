@@ -2,6 +2,7 @@ namespace Api.Models
 
 open System
 open Core.Domain.Errors
+open Core.QueryModels
 
 [<CLIMutable>]
 type UserRegisterInputModel = {
@@ -39,10 +40,13 @@ type ListingPublishedOutputModel = {
 }
 
 [<CLIMutable>]
-type UserListingOutputModel = {
-    Id: Guid
-    Author: string
-    Title: string
+type PublishedListingsOutputModel = {
+    Listings: BookListingDto list
+}
+
+[<CLIMutable>]
+type UserListingsOutputModel = {
+    Listings: UserBookListingDto list
 }
 
 type ApiError =
@@ -53,6 +57,17 @@ type ApiError =
 
 type ApiResponse<'a> = Result<'a, ApiError>
 
+type ChangeListingStatusInputCommand =
+    | RequestToBorrow
+    | CancelRequestToBorrow
+    | ApproveRequestToBorrow
+    | ReturnListing
+type ChangeListingStatusInputModel = {
+    UserId: Guid
+    ListingId: Guid
+    Command: ChangeListingStatusInputCommand
+}
+
 type IUserApi = {
     register: UserRegisterInputModel -> Async<ApiResponse<UserRegisteredOutputModel>>
     login: UserLoginInputModel -> Async<ApiResponse<UserOutputModel>>
@@ -60,7 +75,13 @@ type IUserApi = {
 with static member RouteBuilder _ methodName = sprintf "/api/user/%s" methodName
 
 type IBookListingApi = {
+    // commands
     publish: ListingPublishInputModel -> Async<ApiResponse<ListingPublishedOutputModel>>
-    getByUserId: Guid -> Async<ApiResponse<UserListingOutputModel list>>
+    changeListingStatus: ChangeListingStatusInputModel -> Async<ApiResponse<BookListingDto option>>
+
+    // queries
+    getAllListings: unit -> Async<ApiResponse<PublishedListingsOutputModel>>
+    getByUserId: Guid -> Async<ApiResponse<UserListingsOutputModel>>
+    getUserActivity: Guid -> Async<ApiResponse<UserActivity>>
 }
 with static member RouteBuilder _ methodName = sprintf "/api/listing/%s" methodName

@@ -4,11 +4,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../Api/Models.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Api.fs" />
     <Compile Include="pages/MyBookListings.fs" />
     <Compile Include="pages/Signup.fs" />
     <Compile Include="pages/Signin.fs" />
+    <Compile Include="pages\PublishedBookListings.fs" />
+    <Compile Include="pages\MyActivity.fs" />
+    <Compile Include="pages\MyPages.fs" />
     
     <Compile Include="Router.fs" />
     <Compile Include="App.fs" />
@@ -20,6 +24,7 @@
     <PackageReference Include="Fable.Remoting.Client" Version="7.2.0" />
     <PackageReference Include="Feliz.Router" Version="3.5.0" />
     <PackageReference Include="Feliz.UseElmish" Version="1.5.0" />
+    <PackageReference Include="Fulma" Version="2.10.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core.fsproj" />

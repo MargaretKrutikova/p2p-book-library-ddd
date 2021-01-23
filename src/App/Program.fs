@@ -28,7 +28,7 @@ let createListing (dbConnection) userId =
           Title =
               Title.create "Test title"
               |> Result.defaultWith (fun _ -> failwith "")
-          UserId = userId
+          OwnerId = userId
           Status = Available }
 
     Persistence.Database.CommandPersistenceImpl.createListing dbConnection listing

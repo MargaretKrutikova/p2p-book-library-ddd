@@ -9,6 +9,7 @@ type Route =
   | SignIn
   | AllBookListings
   | MyBookListings
+  | MyActivity
   | NotFound
 
 let parseUrl = function
@@ -17,6 +18,7 @@ let parseUrl = function
   | [ "signup" ] -> Route.SignUp
   | [ "listings" ] -> Route.AllBookListings
   | [ "my-listings" ] -> Route.MyBookListings
+  | [ "my-activity" ] -> Route.MyActivity
   | _ -> Route.NotFound
 
 let urlToRoute = function
@@ -25,6 +27,7 @@ let urlToRoute = function
   | Route.SignUp -> "signup"
   | Route.AllBookListings -> "listings"
   | Route.MyBookListings -> "my-listings"
+  | Route.MyActivity -> "my-activity"
   | _ -> ""
 
 let navigateToMyBookListings () =
@@ -36,15 +39,18 @@ let navigateToSignIn () =
 let canViewIfLoggedIn route =
     match route with
     | Route.MyBookListings -> true
+    | Route.AllBookListings -> true
+    | Route.MyActivity -> true
     | _ -> false
 
 let canViewIfLoggedOut =
     function 
     | Route.MyBookListings -> false
-    | _ -> false
+    | Route.MyActivity -> false
+    | _ -> true
 
 let loggedInPageOrDefault page =
     if canViewIfLoggedIn page then page else Route.Home
 
-let loggedOutPageOrDefault page =
+let anonymousPageOrDefault page =
     if canViewIfLoggedOut page then page else Route.SignIn

@@ -13,7 +13,7 @@ open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open InMemoryPersistence
 
-open Api.BookListing.RemotingHandlers
+open Api.RemotingHandlers
 
 // ---------------------------------
 // Web app
@@ -93,16 +93,26 @@ let configureAppConfiguration  (context: WebHostBuilderContext) (config: IConfig
         .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName ,true)
         .AddEnvironmentVariables() |> ignore
 
+type Startup() =
+    member __.ConfigureServices (services : IServiceCollection) = 
+        services.AddCors()    |> ignore
+        services.AddGiraffe() |> ignore
+        services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
+        
+    member __.Configure (app : IApplicationBuilder) (env : IHostEnvironment) (loggerFactory : ILoggerFactory) =
+        configureApp app
+
 [<EntryPoint>]
-let main args =
-    Host.CreateDefaultBuilder(args)
+let main _ =
+    Host.CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
             fun webHostBuilder ->
                 webHostBuilder
-                    .Configure(Action<IApplicationBuilder> configureApp)
-                    .ConfigureAppConfiguration(configureAppConfiguration)
-                    .ConfigureServices(configureServices)
-                    .ConfigureLogging(configureLogging)
+//                    .Configure(Action<IApplicationBuilder> configureApp)
+//                    .ConfigureAppConfiguration(configureAppConfiguration)
+//                    .ConfigureServices(configureServices)
+//                    .ConfigureLogging(configureLogging)
+                    .UseStartup<Startup>()
                     |> ignore)
         .Build()
         .Run()

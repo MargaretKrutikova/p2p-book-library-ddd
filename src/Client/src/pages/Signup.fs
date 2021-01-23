@@ -6,6 +6,8 @@ open Client.Utils
 open Feliz
 open Elmish
 open Feliz.UseElmish
+open Fulma
+open Fable.React
 
 type CreateUserApiState =
     | NotAsked
@@ -27,6 +29,10 @@ let toUserInputModel model: UserRegisterInputModel =
       Email = model.Email
       IsSubscribedToUserListingActivity = true }
 
+let isSignupFormValid (model: Model): bool =
+    String.IsNullOrWhiteSpace model.UserName
+    |> not
+    
 type Msg =
     | UserNameChanged of string
     | EmailChanged of string
@@ -68,15 +74,52 @@ let view =
             | Error e -> Html.text "Error"
             | CreatedUser -> Html.text "User created"
 
-        Html.div [ Html.h1 [ prop.children [ Html.text "Sign up" ] ]
+// VIEW
 
-                   Html.input [ prop.onChange (eventToInputValue >> UserNameChanged >> dispatch)
-                                prop.value model.UserName
-                                prop.type' "Text" ]
-                   Html.input [ prop.onChange (eventToInputValue >> EmailChanged >> dispatch)
-                                prop.value model.Email
-                                prop.type' "Email"  ]
-                   Html.button [ prop.onClick (fun _ -> dispatch SubmitClicked)
-                                 prop.children [ Html.text "Sign up" ] ]
-                   Html.div [ resultView ] ]
-        )
+let signupResultMessage (result: CreateUserApiState) =
+    match result with
+    | CreatedUser _ -> Notification.success "You are now registered!"
+    | Error _ -> Notification.error
+    | NotAsked -> div [] []
+    | Loading -> div [] []
+
+let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}) ->
+    let model, dispatch = React.useElmish(init, update props.onUserCreated, [| |])        
+    let canSubmit =
+            isSignupFormValid model
+            && model.CreateUserApiState
+            <> Loading
+
+    Column.column [ Column.Width(Screen.All, Column.IsOneThird) ] [
+        Heading.h2 [] [str "Sign up"]
+
+        Box.box' [] [
+            form [] [
+                Field.div [] [
+                    Label.label [] [ str "Username" ]
+                    Control.div [] [
+                        Input.text [ Input.Value model.UserName
+                                     Input.OnChange(eventToInputValue >> UserNameChanged >> dispatch) ]
+                    ]
+                ]
+
+                Field.div [] [
+                    Control.div [] [
+                        signupResultMessage model.CreateUserApiState
+                    ]
+                ]
+                Field.div [] [
+                    Control.div [] [
+                        Button.button [ Button.Disabled(canSubmit |> not)
+                                        Button.Color IsPrimary
+                                        Button.IsFullWidth
+                                        Button.OnClick(fun e ->
+                                            e.preventDefault ()
+                                            dispatch SubmitClicked) ] [
+                            str "Sign up"
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ])
