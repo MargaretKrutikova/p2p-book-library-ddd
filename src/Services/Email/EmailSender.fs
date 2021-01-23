@@ -2,6 +2,20 @@ module Services.Email.EmailSender
 
 open Services.Email.Types
 
+type EmailSenderMessage =
+    | SendRegistrationEmail of RegisteredUserInfo
+    | SendBookRequestedToBorrow of BookRequestedToBorrowInfo
+    | SendBookRequestApproved
+and BookRequestedToBorrowInfo = {
+    Owner: UserEmailInfoDto
+    Borrower: UserEmailInfoDto 
+    BookInfo : BookListingEmailInfoDto
+}
+and RegisteredUserInfo = {
+    Name: string
+    Email: string
+}
+
 // TODO: read from some config
 let private createBookRequestedToBorrowEmailBody (info: BookRequestedToBorrowInfo) =
     sprintf "Dear %s! %s wants to borrow %s, %s. Please take action :)"

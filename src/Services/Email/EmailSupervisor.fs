@@ -3,18 +3,10 @@ module Services.Email.EmailSupervisor
 open Core.Commands
 open Core.Domain.Types
 open Core.Events
+open Services.Email.EmailSender
 open Services.Email.Types
 
 open FsToolkit.ErrorHandling
-
-type GetUserEmailInfo = UserId -> Async<Result<UserEmailInfoDto, string>>
-type GetBookListingEmailInfo = ListingId -> Async<Result<BookListingEmailInfoDto, string>>
-
-type EmailSenderDependencies = {
-    GetUserEmailInfo: GetUserEmailInfo
-    GetBookListingEmailInfo: GetBookListingEmailInfo
-    SendEmail: SendEmail
-}
 
 type EmailSupervisorMessage =
     | DomainEvent of EventEnvelope

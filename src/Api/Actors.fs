@@ -2,7 +2,9 @@ namespace Api.Actors
 
 open Akka.FSharp
 open Microsoft.Extensions.Logging
+
 open Services.Email.EmailSupervisor
+open Services.Email.Types
 
 module ActorSystem =
     let private createActorSystem () =

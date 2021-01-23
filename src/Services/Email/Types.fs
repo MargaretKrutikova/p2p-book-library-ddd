@@ -27,16 +27,11 @@ type BookListingEmailInfoDto = {
     Author: string
 }
 
-type EmailSenderMessage =
-    | SendRegistrationEmail of RegisteredUserInfo
-    | SendBookRequestedToBorrow of BookRequestedToBorrowInfo
-    | SendBookRequestApproved
-and BookRequestedToBorrowInfo = {
-    Owner: UserEmailInfoDto
-    Borrower: UserEmailInfoDto 
-    BookInfo : BookListingEmailInfoDto
-}
-and RegisteredUserInfo = {
-    Name: string
-    Email: string
+type GetUserEmailInfo = UserId -> Async<Result<UserEmailInfoDto, string>>
+type GetBookListingEmailInfo = ListingId -> Async<Result<BookListingEmailInfoDto, string>>
+
+type EmailSenderDependencies = {
+    GetUserEmailInfo: GetUserEmailInfo
+    GetBookListingEmailInfo: GetBookListingEmailInfo
+    SendEmail: SendEmail
 }

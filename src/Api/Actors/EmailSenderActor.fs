@@ -3,6 +3,7 @@ module Api.Actors.EmailSenderSupervisor
 open Core.Events
 open Services.Email.EmailSupervisor
 open Services.Email.EmailSender
+open Services.Email.Types
 
 open Akka.Actor
 open Akka.FSharp

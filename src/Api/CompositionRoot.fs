@@ -13,6 +13,7 @@ open Akka.Actor
 open Akka.FSharp
 open FsToolkit.ErrorHandling.TaskResultCE
 open Microsoft.Extensions.Logging
+open Services.Email.Types
     
 let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Command) =
     taskResult {
