@@ -62,18 +62,6 @@ let update (onUserCreated: OnUserCreated) (message: Msg) (model: Model): Model *
               CreateUserApiState = CreatedUser },
         Cmd.ofSub (fun _ -> onUserCreated output.Id)
 
-let view =
-    React.functionComponent (fun (props: {| onUserCreated: Guid -> unit |}) ->
-        let model, dispatch =
-            React.useElmish (init, update props.onUserCreated, [||])
-
-        let resultView =
-            match model.CreateUserApiState with
-            | NotAsked -> Html.span []
-            | Loading -> Html.text "..."
-            | Error e -> Html.text "Error"
-            | CreatedUser -> Html.text "User created"
-
 // VIEW
 
 let signupResultMessage (result: CreateUserApiState) =
@@ -100,6 +88,14 @@ let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}
                     Control.div [] [
                         Input.text [ Input.Value model.UserName
                                      Input.OnChange(eventToInputValue >> UserNameChanged >> dispatch) ]
+                    ]
+                ]
+                
+                Field.div [] [
+                    Label.label [] [ str "Email" ]
+                    Control.div [] [
+                        Input.text [ Input.Value model.UserName
+                                     Input.OnChange(eventToInputValue >> EmailChanged >> dispatch) ]
                     ]
                 ]
 

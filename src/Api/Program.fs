@@ -1,8 +1,7 @@
 module Api.App
 
 open System
-open System.Configuration
-open Api.Email
+open Api.Infrastructure.EmailSender
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
@@ -44,21 +43,20 @@ let configureCors (builder : CorsPolicyBuilder) =
        .AllowAnyHeader()
        |> ignore
 
+let readSmtpConfiguration (configuration: IConfiguration): SmtpConfiguration =
+    let smtpConfigJson = configuration.GetSection("SmtpConfiguration")
+    { SmtpServer = smtpConfigJson.GetValue("SmtpServer")
+      SmtpPassword = smtpConfigJson.GetValue("SmtpPassword")
+      SmtpUsername = smtpConfigJson.GetValue("SmtpUsername")
+      SenderEmail = smtpConfigJson.GetValue("SenderEmail")
+      SenderName = smtpConfigJson.GetValue("SenderName")
+      Port = smtpConfigJson.GetValue("Port") }
+
 let compose (configuration: IConfiguration) (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
-    
-    let smtpConfigJson = configuration.GetSection("SmtpConfiguration")
-    let smtpConfig: SmtpConfiguration = {
-        SmtpServer = smtpConfigJson.GetValue("SmtpServer")
-        SmtpPassword = smtpConfigJson.GetValue("SmtpPassword")
-        SmtpUsername = smtpConfigJson.GetValue("SmtpUsername")
-        SenderEmail = smtpConfigJson.GetValue("SenderEmail")
-        SenderName = smtpConfigJson.GetValue("SenderName")
-        Port = smtpConfigJson.GetValue("Port") }
-    
     let pickupDirectory = @"/Users/margaritakrutikova/code/p2p-book-library/src/Api/mails"
 
-    persistence |||> CompositionRoot.compose smtpConfig pickupDirectory logger
+    persistence |||> CompositionRoot.compose (readSmtpConfiguration configuration) pickupDirectory logger
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
@@ -66,11 +64,10 @@ let configureApp (app : IApplicationBuilder) =
     | true  ->
         app.UseDeveloperExceptionPage()
     | false ->
-        app .UseGiraffeErrorHandler(errorHandler)
-            //.UseHttpsRedirection()
-            )
-        .UseCors(configureCors)
-        .UseGiraffe(webApp ())
+        app.UseGiraffeErrorHandler(errorHandler)
+    )
+     .UseCors(configureCors)
+     .UseGiraffe(webApp ())
 
 let configureServices (services : IServiceCollection) =
     let serviceProvider = services.BuildServiceProvider()
@@ -83,13 +80,9 @@ let configureServices (services : IServiceCollection) =
             let logger = container.GetRequiredService<ILogger<IStartup>>() // TODO: fix later
             compose config logger) |> ignore
 
-let configureLogging (builder : ILoggingBuilder) =
-    builder.AddConsole()
-           .AddDebug() |> ignore
-
 let configureAppConfiguration  (context: WebHostBuilderContext) (config: IConfigurationBuilder) =  
     config
-        .AddJsonFile("appsettings.json",false,true)
+        .AddJsonFile("appsettings.json", false, true)
         .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName ,true)
         .AddEnvironmentVariables() |> ignore
 
@@ -97,21 +90,18 @@ type Startup() =
     member __.ConfigureServices (services : IServiceCollection) = 
         services.AddCors()    |> ignore
         services.AddGiraffe() |> ignore
-        services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
         
     member __.Configure (app : IApplicationBuilder) (env : IHostEnvironment) (loggerFactory : ILoggerFactory) =
         configureApp app
-
+        
 [<EntryPoint>]
 let main _ =
     Host.CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
             fun webHostBuilder ->
                 webHostBuilder
-//                    .Configure(Action<IApplicationBuilder> configureApp)
-//                    .ConfigureAppConfiguration(configureAppConfiguration)
-//                    .ConfigureServices(configureServices)
-//                    .ConfigureLogging(configureLogging)
+                    .ConfigureServices(configureServices)
+                    .ConfigureAppConfiguration(configureAppConfiguration)
                     .UseStartup<Startup>()
                     |> ignore)
         .Build()

@@ -1,24 +1,24 @@
 module Api.CompositionRoot
 
 open Api.Actors
-open Akka.Actor
 
-open Api.Actors.EmailSenderSupervisor
-open Api.Email
 open Api.InMemoryPersistence
-open Core.Domain
+open Api.Infrastructure.EmailSender
+open Core.Commands
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
+open Services.Email.EmailSupervisor
 
+open Akka.Actor
 open Akka.FSharp
 open FsToolkit.ErrorHandling.TaskResultCE
 open Microsoft.Extensions.Logging
     
-let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Messages.Command) =
+let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Command) =
     taskResult {
         let! event = commandHandler command
         publish event system.EventStream
-        publish (event |> EmailSupervisorMessage.DomainEvent) system.EventStream
+        publish (event |> Seq.map EmailSupervisorMessage.DomainEvent) system.EventStream
         return event
     }
 
@@ -27,7 +27,7 @@ type CompositionRoot = {
     QueryHandler: QueryHandler
 }
 
-let private createEmailActorDependencies sendEmail (infrastructurePersistence: InfrastructurePersistenceOperations): EmailSenderSupervisor.Dependencies =
+let private createEmailActorDependencies sendEmail (infrastructurePersistence: InfrastructurePersistenceOperations): EmailSenderDependencies =
     {
         GetUserEmailInfo = infrastructurePersistence.GetUserEmailInfo
         GetBookListingEmailInfo = infrastructurePersistence.GetBookListingEmailInfo
@@ -41,7 +41,7 @@ let compose
     (commandPersistence: CommandPersistenceOperations)
     (queryPersistence: QueryPersistenceOperations)
     (infrastructurePersistence: InfrastructurePersistenceOperations): CompositionRoot =
-  let sendEmail = EmailSender.sendToPickupDirectory emailPickupDirectory smtpConfig logger
+  let sendEmail = sendToPickupDirectory emailPickupDirectory smtpConfig logger
   let emailDeps = createEmailActorDependencies sendEmail infrastructurePersistence
   let system =  ActorSystem.setup emailDeps logger
   

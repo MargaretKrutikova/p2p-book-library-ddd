@@ -1,15 +1,15 @@
 module Api.InMemoryPersistence
 
-open System.Threading.Tasks
-open Api.Actors.EmailSenderActor
-open Api.Actors.EmailSenderSupervisor
 open Core.Domain.Types
 open Core.Handlers.CommandHandlers
 open Core.Handlers.QueryHandlers
 open Core.Logic
 open Core.QueryModels
+open Services.Email.EmailSupervisor
+open Services.Email.Types
+
+open System.Threading.Tasks
 open FsToolkit.ErrorHandling
-open System
 
 type InfrastructurePersistenceOperations =
     { GetUserEmailInfo: GetUserEmailInfo
@@ -141,7 +141,7 @@ module InMemoryPersistence =
         let getUserEmailInfo: GetUserEmailInfo =
             fun userId ->
                 users
-                |> Seq.filter (fun user -> user.Id = userId)
+                |> Seq.filter (fun user -> user.Id = (userId |> UserId.value) )
                 |> Seq.tryHead
                 |> Result.requireSome "User not found"
                 |> Result.map (fun user ->
@@ -157,7 +157,7 @@ module InMemoryPersistence =
                 |> Seq.tryHead
                 |> Result.requireSome "Book listing not found"
                 |> Result.map (fun listing ->
-                    { OwnerId = listing.UserId
+                    { OwnerId = listing.OwnerId
                       Title = listing.Title |> Title.value
                       Author = listing.Author |> Author.value }: BookListingEmailInfoDto)
                 |> async.Return
