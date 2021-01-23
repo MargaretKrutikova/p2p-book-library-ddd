@@ -15,12 +15,15 @@ open FsToolkit.ErrorHandling.TaskResultCE
 open Microsoft.Extensions.Logging
 open Services.Email.Types
     
+let private publishEvents (system: ActorSystem) (events: seq<_>) =
+    events |> Seq.iter (fun e -> publish e system.EventStream)
+    
 let commandHandlerWithPublish (system: ActorSystem) (commandHandler: CommandHandler) (command: Command) =
     taskResult {
-        let! event = commandHandler command
-        publish event system.EventStream
-        publish (event |> Seq.map EmailSupervisorMessage.DomainEvent) system.EventStream
-        return event
+        let! events = commandHandler command
+        publishEvents system events
+        events |> Seq.map EmailSupervisorMessage.DomainEvent |> publishEvents system
+        return events
     }
 
 type CompositionRoot = {

@@ -94,7 +94,7 @@ let view = React.functionComponent(fun (props: {| onUserCreated: Guid -> unit |}
                 Field.div [] [
                     Label.label [] [ str "Email" ]
                     Control.div [] [
-                        Input.text [ Input.Value model.UserName
+                        Input.text [ Input.Value model.Email
                                      Input.OnChange(eventToInputValue >> EmailChanged >> dispatch) ]
                     ]
                 ]
