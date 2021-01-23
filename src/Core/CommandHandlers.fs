@@ -11,7 +11,7 @@ open FsToolkit.ErrorHandling
 open Core.Domain.Errors
 open Core.Domain.Types
 
-type CommandResult = Task<Result<EventEnvelope option, AppError>>
+type CommandResult = Task<Result<EventEnvelope list, AppError>>
 type CommandHandler = Command -> CommandResult
 
 module CommandPersistenceOperations =
@@ -54,7 +54,7 @@ let publishBookListing (operations: CommandPersistenceOperations) (args: Publish
         do! operations.CreateListing bookListing |> TaskResult.mapError (fun _ -> ServiceError)
         let event = Event.BookListingPublished { Listing = bookListing }
         
-        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+        return { Timestamp = DateTime.UtcNow; Event = event } |> List.singleton
     }
 
 type RegisterUser = CommandPersistenceOperations.CreateUser -> RegisterUserArgs -> CommandResult    
@@ -70,7 +70,7 @@ let registerUser: RegisterUser =
           }
         }
         do! createUser user |> TaskResult.mapError (fun _ -> ServiceError)
-        return Event.UserRegistered args
+        return { Timestamp = DateTime.UtcNow; Event = Event.UserRegistered args } |> List.singleton
      }
 
 let executeChangeStatusCommand (persistence: CommandPersistenceOperations) (args: ChangeListingStatusArgs): CommandResult =
@@ -84,7 +84,7 @@ let executeChangeStatusCommand (persistence: CommandPersistenceOperations) (args
         do! persistence.UpdateListingStatus listing.Id newStatus
             |> TaskResult.mapError (fun _ -> ServiceError)
         
-        return { Timestamp = DateTime.UtcNow; Event = event } |> Some
+        return { Timestamp = DateTime.UtcNow; Event = event } |> List.singleton
     }
 
 let handleCommand (persistence: CommandPersistenceOperations): CommandHandler =

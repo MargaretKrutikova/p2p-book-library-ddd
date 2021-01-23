@@ -8,7 +8,12 @@ type PublishBookListingArgs =
       Title: string
       Author: string }
 
-type RegisterUserArgs = { UserId: UserId; Name: string }
+type RegisterUserArgs = {
+    UserId: UserId
+    Name: string
+    Email: string
+    IsSubscribedToUserListingActivity: bool
+}
 
 type ChangeListingStatusCommand =
     | RequestToBorrow
