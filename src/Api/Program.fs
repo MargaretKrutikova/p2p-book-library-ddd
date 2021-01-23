@@ -87,9 +87,7 @@ let configureAppConfiguration  (context: WebHostBuilderContext) (config: IConfig
         .AddEnvironmentVariables() |> ignore
 
 type Startup() =
-    member __.ConfigureServices (services : IServiceCollection) = 
-        services.AddCors()    |> ignore
-        services.AddGiraffe() |> ignore
+    member __.ConfigureServices (services : IServiceCollection) = configureServices services
         
     member __.Configure (app : IApplicationBuilder) (env : IHostEnvironment) (loggerFactory : ILoggerFactory) =
         configureApp app
@@ -100,7 +98,6 @@ let main _ =
         .ConfigureWebHostDefaults(
             fun webHostBuilder ->
                 webHostBuilder
-                    .ConfigureServices(configureServices)
                     .ConfigureAppConfiguration(configureAppConfiguration)
                     .UseStartup<Startup>()
                     |> ignore)
