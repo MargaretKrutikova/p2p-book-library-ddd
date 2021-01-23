@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Email\Types.fs" />
+        <Compile Include="Email\EmailSender.fs" />
+        <Compile Include="Email\EmailSupervisor.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Core\Core.fsproj" />
+    </ItemGroup>
+
+</Project>
