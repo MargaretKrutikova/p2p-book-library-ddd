@@ -16,10 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="EmailSender.fs" />
     <Compile Include="Actors\EmailSenderActor.fs" />
-    <Compile Include="Actors\EmailSenderSupervisor.fs" />
-
+    <Compile Include="Infrastructure\EmailSender.fs" />
     <Compile Include="Models.fs" />
     <Compile Include="Actors.fs" />
     <Compile Include="InMemoryPersistence.fs" />
@@ -32,10 +30,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Persistence\Persistence.fsproj" />
     <ProjectReference Include="..\Core\Core.fsproj" />
+    <ProjectReference Include="..\Services\Services.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="web.config" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="appsettings.json" />
   </ItemGroup>
 

@@ -4,7 +4,6 @@ open Core.Commands
 open Core.Domain.Types
 open Core.Events
 open Services.Email.Types
-open Services.Email.EmailSender
 
 open FsToolkit.ErrorHandling
 
@@ -18,7 +17,7 @@ type EmailSenderDependencies = {
 }
 
 type EmailSupervisorMessage =
-    | DomainEvent of Event
+    | DomainEvent of EventEnvelope
     | FailedToFetchEmailInfo of originalEvent: Event * error: string
     | EmailInfoReady of EmailSenderMessage
 
