@@ -1,12 +1,10 @@
-module Core.QueryModels
+module Services.QueryModels
 
 open System
 open System.Threading.Tasks
+open Services.Persistence
 
-type QueryError =
-   | InternalError   
-
-type QueryResult<'a> = Task<Result<'a, QueryError>>
+type QueryResult<'a> = Task<Result<'a, DbReadError>>
 
 type BorrowerDto = {
     Id: Guid
