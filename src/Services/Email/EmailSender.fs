@@ -1,5 +1,6 @@
 module Services.Email.EmailSender
 
+open Core.Domain.Types
 open Services.Email.Types
 
 type EmailSenderMessage =
@@ -7,9 +8,9 @@ type EmailSenderMessage =
     | SendBookRequestedToBorrow of BookRequestedToBorrowInfo
     | SendBookRequestApproved
 and BookRequestedToBorrowInfo = {
-    Owner: UserEmailInfoDto
-    Borrower: UserEmailInfoDto 
-    BookInfo : BookListingEmailInfoDto
+    Owner: User
+    Borrower: User 
+    BookInfo : BookListing
 }
 and RegisteredUserInfo = {
     Name: string
