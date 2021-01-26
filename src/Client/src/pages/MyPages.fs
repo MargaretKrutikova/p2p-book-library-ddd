@@ -6,7 +6,6 @@ open Client.Utils
 open Client.Api
 
 open System
-open Core.QueryModels
 open Feliz
 open Elmish
 open Feliz.UseElmish

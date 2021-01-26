@@ -6,13 +6,13 @@ open Client.Utils
 open Client.Api
 
 open System
-open Core.QueryModels
 open Feliz
 open Elmish
 open Feliz.UseElmish
 open Fable.React.Props
 open Fable.React
 open Fulma
+open Services.QueryModels
 
 type Model =
     { PublishedListings: ApiState<PublishedListingsOutputModel> }

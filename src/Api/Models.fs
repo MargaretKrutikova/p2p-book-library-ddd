@@ -2,7 +2,7 @@ namespace Api.Models
 
 open System
 open Core.Domain.Errors
-open Core.QueryModels
+open Services.QueryModels
 
 [<CLIMutable>]
 type UserRegisterInputModel = {
