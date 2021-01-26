@@ -21,13 +21,9 @@ let createListing (dbConnection) userId =
     let id = Guid.NewGuid()
 
     let listing: BookListing =
-        { ListingId = ListingId.create id
-          Author =
-              Author.create "Test"
-              |> Result.defaultWith (fun _ -> failwith "")
-          Title =
-              Title.create "Test title"
-              |> Result.defaultWith (fun _ -> failwith "")
+        { Id = ListingId.create id
+          Author = "Test"
+          Title = "Test title"
           OwnerId = userId
           Status = Available }
 
