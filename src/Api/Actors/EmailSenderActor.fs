@@ -3,12 +3,11 @@ module Api.Actors.EmailSenderSupervisor
 open Core.Events
 open Services.Email.EmailSupervisor
 open Services.Email.EmailSender
-open Services.Email.Types
 
 open Akka.Actor
 open Akka.FSharp
 
-let private emailSenderSupervisor (dependencies: EmailSenderDependencies) (mailbox: Actor<EmailSupervisorMessage>) =
+let private emailSenderSupervisor (dependencies: EmailSupervisorDependencies) (mailbox: Actor<EmailSupervisorMessage>) =
     let emailActor =
         handleEmailSenderMessage dependencies.SendEmail
         |> actorOf
@@ -33,5 +32,5 @@ let private emailSenderSupervisor (dependencies: EmailSenderDependencies) (mailb
     }
     loop ()
 
-let createActor (dependencies: EmailSenderDependencies) (system: ActorSystem) =
+let createActor (dependencies: EmailSupervisorDependencies) (system: ActorSystem) =
     spawn system "email-sender-supervisor" (emailSenderSupervisor dependencies)
