@@ -5,9 +5,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Persistence.fs" />
         <Compile Include="Email\Types.fs" />
         <Compile Include="Email\EmailSender.fs" />
         <Compile Include="Email\EmailSupervisor.fs" />
+        <Compile Include="CommandHandlers.fs" />
+        <Compile Include="QueryModels.fs" />
+        <Compile Include="QueryHandlers.fs" />
     </ItemGroup>
 
     <ItemGroup>
