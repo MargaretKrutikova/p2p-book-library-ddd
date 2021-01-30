@@ -54,7 +54,7 @@ let readSmtpConfiguration (configuration: IConfiguration): SmtpConfiguration =
 
 let compose (configuration: IConfiguration) (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
-    let pickupDirectory = @"/Users/margaritakrutikova/code/p2p-book-library/src/Api/mails"
+    let pickupDirectory = configuration.GetSection("SmtpConfiguration").GetValue("PickupDirectory")
 
     persistence |||> CompositionRoot.compose (readSmtpConfiguration configuration) pickupDirectory logger
 
