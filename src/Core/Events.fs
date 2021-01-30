@@ -1,6 +1,7 @@
 module Core.Events
 
 open System
+open Core.Commands
 open Core.Domain.Types
 
 type ListingRequestedToBorrowEventArgs =
@@ -30,5 +31,6 @@ type Event =
     | RequestToBorrowCancelled of RequestToBorrowCancelledEventArgs
     | RequestToBorrowApproved of RequestToBorrowApprovedEventArgs
     | ListingReturned of ListingReturnedEventArgs
+    | UserRegistered of RegisterUserArgs
 
 type EventEnvelope = { Timestamp: DateTime; Event: Event }

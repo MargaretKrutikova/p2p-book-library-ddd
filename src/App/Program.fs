@@ -7,8 +7,10 @@ let createUser (dbConnection) =
     let id = Guid.NewGuid()
     Persistence.Database.CommandPersistenceImpl.createUser
         dbConnection
-        { Name = "Jogn"
-          UserId = UserId.create id }
+        { Name = "John"
+          UserId = UserId.create id
+          Email = ""
+          UserSettings = { IsSubscribedToUserListingActivity = true } }
     |> Async.AwaitTask
     |> Async.RunSynchronously
     |> ignore
@@ -19,13 +21,9 @@ let createListing (dbConnection) userId =
     let id = Guid.NewGuid()
 
     let listing: BookListing =
-        { ListingId = ListingId.create id
-          Author =
-              Author.create "Test"
-              |> Result.defaultWith (fun _ -> failwith "")
-          Title =
-              Title.create "Test title"
-              |> Result.defaultWith (fun _ -> failwith "")
+        { Id = ListingId.create id
+          Author = "Test"
+          Title = "Test title"
           OwnerId = userId
           Status = Available }
 

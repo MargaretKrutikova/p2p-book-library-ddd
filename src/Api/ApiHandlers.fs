@@ -5,12 +5,12 @@ open Api.Models
 open Core.Commands
 open Core.Domain.Errors
 open Core.Domain.Types
-open Core.Handlers.QueryHandlers
 
-open Core.QueryModels
-open FsToolkit.ErrorHandling
 open System
+open FsToolkit.ErrorHandling
 open FsToolkit.ErrorHandling.Operator.TaskResult
+open Services.QueryHandlers
+open Services.QueryModels
 
 module ModelConversions =
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel = { Listings = listings }
@@ -25,7 +25,9 @@ module CommandArgsConversions =
 
     let toRegisterUserArgs (userId: Guid) (inputModel: UserRegisterInputModel): RegisterUserArgs =
         { UserId = UserId.create userId
-          Name = inputModel.Name }
+          Name = inputModel.Name
+          Email = inputModel.Email
+          IsSubscribedToUserListingActivity = inputModel.IsSubscribedToUserListingActivity }
     
     let private toChangeListingStatusArgs' (listingId: Guid) (userId: Guid) command: ChangeListingStatusArgs =
         { ChangeRequestedByUserId = userId |> UserId.create; ListingId = ListingId.create listingId; Command = command }
@@ -46,7 +48,7 @@ module CommandArgsConversions =
         
 let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
-    | InternalError -> ApiError.InternalError
+    | QueryError.InternalError -> ApiError.InternalError
 
 let private fromAppError (appError: AppError): ApiError =
     match appError with

@@ -9,21 +9,32 @@
   <ItemGroup>
     <PackageReference Include="Fable.Remoting.Giraffe" Version="4.15.0" />
     <PackageReference Include="Giraffe" Version="4.1.0" />
+    <PackageReference Include="mailkit" Version="2.10.0" />
     <PackageReference Include="Ply" Version="0.3.*" />
+    <PackageReference Include="akka" Version="1.4.13" />
+    <PackageReference Include="akka.fsharp" Version="1.4.13" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Actors\EmailSenderActor.fs" />
+    <Compile Include="Infrastructure\EmailSender.fs" />
     <Compile Include="Models.fs" />
+    <Compile Include="Actors.fs" />
+    <Compile Include="InMemoryPersistence.fs" />
     <Compile Include="CompositionRoot.fs" />
     <Compile Include="ApiHandlers.fs" />
     <Compile Include="RemotingHandlers.fs" />
-    <Compile Include="InMemoryPersistence.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Persistence\Persistence.fsproj" />
     <ProjectReference Include="..\Core\Core.fsproj" />
+    <ProjectReference Include="..\Services\Services.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json" />
   </ItemGroup>
 
   <ItemGroup>

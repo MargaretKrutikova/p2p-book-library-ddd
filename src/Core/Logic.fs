@@ -4,34 +4,41 @@ open Core.Commands
 open Core.Events
 open Domain.Errors
 open Domain.Types
+
 open FsToolkit.ErrorHandling.ResultCE
+open System
+
+module Validation =
+    let assertValidTitle value: Result<unit, ValidationError> =
+        if String.IsNullOrWhiteSpace value
+           || value.Length > 200 then
+            Error TitleInvalid
+        else
+            Ok ()
+
+    let assertValidAuthor value: Result<unit, ValidationError> =
+        if String.IsNullOrWhiteSpace value
+           || value.Length > 100 then
+            Error AuthorInvalid
+        else
+            Ok ()
 
 let publishBookListing (dto: PublishBookListingArgs): Result<BookListing, AppError> =
     result {
-        let! title =
-            Title.create dto.Title
-            |> Result.mapError Validation
-
-        let! author =
-            Author.create dto.Author
-            |> Result.mapError Validation
+        do! Validation.assertValidTitle dto.Title |> Result.mapError Validation
+        do! Validation.assertValidAuthor dto.Author |> Result.mapError Validation
 
         let bookListing: BookListing =
-            { ListingId = dto.NewListingId
+            { Id = dto.NewListingId
               OwnerId = dto.UserId
-              Author = author
-              Title = title
+              Author = dto.Author 
+              Title = dto.Title
               Status = Available }
 
         return bookListing
     }
 
-type ListingReadModel =
-    { Id: ListingId
-      OwnerId: UserId
-      Status: ListingStatus }
-
-let requestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+let requestToBorrowListing (listing: BookListing) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
     let requesterId = args.ChangeRequestedByUserId
     if listing.OwnerId = requesterId then
         AppError.toDomain ListingNotEligibleForOperation
@@ -45,7 +52,7 @@ let requestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatu
         | RequestedToBorrow _
         | Borrowed _ -> AppError.toDomain BorrowErrorListingIsNotAvailable
 
-let cancelRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+let cancelRequestToBorrowListing (listing: BookListing) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
     let requesterId = args.ChangeRequestedByUserId
     match listing.Status with
     | RequestedToBorrow borrowerId when borrowerId = requesterId ->
@@ -57,7 +64,7 @@ let cancelRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListin
     | RequestedToBorrow _
     | Borrowed _ -> AppError.toDomain ListingNotEligibleForOperation
 
-let approveRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+let approveRequestToBorrowListing (listing: BookListing) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
     let approverId = args.ChangeRequestedByUserId
     if listing.OwnerId <> approverId then
         AppError.toDomain ListingNotEligibleForOperation
@@ -69,7 +76,7 @@ let approveRequestToBorrowListing (listing: ListingReadModel) (args: ChangeListi
         | Borrowed _ -> AppError.toDomain ListingIsAlreadyBorrowed
         | Available -> AppError.toDomain ListingIsNotRequested
 
-let returnBorrowedListing (listing: ListingReadModel) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
+let returnBorrowedListing (listing: BookListing) (args: ChangeListingStatusArgs): Result<Event * ListingStatus, AppError> =
     let borrowerId = args.ChangeRequestedByUserId
     match listing.Status with
     | Borrowed currentBorrowerId when borrowerId = currentBorrowerId ->
@@ -79,7 +86,7 @@ let returnBorrowedListing (listing: ListingReadModel) (args: ChangeListingStatus
     | RequestedToBorrow _
     | Available -> AppError.toDomain ListingIsNotBorrowed
 
-let changeListingStatus (listing: ListingReadModel) (args: ChangeListingStatusArgs) =
+let changeListingStatus (listing: BookListing) (args: ChangeListingStatusArgs) =
     match args.Command with
     | RequestToBorrow -> requestToBorrowListing listing args
     | CancelRequestToBorrow -> cancelRequestToBorrowListing listing args

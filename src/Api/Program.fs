@@ -1,9 +1,11 @@
 module Api.App
 
 open System
+open Api.Infrastructure.EmailSender
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Cors.Infrastructure
 open Microsoft.AspNetCore.Hosting
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
@@ -41,9 +43,20 @@ let configureCors (builder : CorsPolicyBuilder) =
        .AllowAnyHeader()
        |> ignore
 
-let compose (): CompositionRoot.CompositionRoot =
+let readSmtpConfiguration (configuration: IConfiguration): SmtpConfiguration =
+    let smtpConfigJson = configuration.GetSection("SmtpConfiguration")
+    { SmtpServer = smtpConfigJson.GetValue("SmtpServer")
+      SmtpPassword = smtpConfigJson.GetValue("SmtpPassword")
+      SmtpUsername = smtpConfigJson.GetValue("SmtpUsername")
+      SenderEmail = smtpConfigJson.GetValue("SenderEmail")
+      SenderName = smtpConfigJson.GetValue("SenderName")
+      Port = smtpConfigJson.GetValue("Port") }
+
+let compose (configuration: IConfiguration) (logger): CompositionRoot.CompositionRoot =
     let persistence = InMemoryPersistence.create ()
-    persistence ||> CompositionRoot.compose
+    let pickupDirectory = configuration.GetSection("SmtpConfiguration").GetValue("PickupDirectory")
+
+    persistence |||> CompositionRoot.compose (readSmtpConfiguration configuration) pickupDirectory logger
 
 let configureApp (app : IApplicationBuilder) =
     let env = app.ApplicationServices.GetService<IWebHostEnvironment>()
@@ -51,31 +64,41 @@ let configureApp (app : IApplicationBuilder) =
     | true  ->
         app.UseDeveloperExceptionPage()
     | false ->
-        app .UseGiraffeErrorHandler(errorHandler)
-            //.UseHttpsRedirection()
-            )
-        .UseCors(configureCors)
-        .UseGiraffe(webApp ())
+        app.UseGiraffeErrorHandler(errorHandler)
+    )
+     .UseCors(configureCors)
+     .UseGiraffe(webApp ())
 
-let configureLogging (builder : ILoggingBuilder) =
-    builder.AddConsole()
-           .AddDebug() |> ignore
+let configureServices (services : IServiceCollection) =
+    let serviceProvider = services.BuildServiceProvider()
+    let config = serviceProvider.GetService<IConfiguration>()
+    
+    services.AddCors()    |> ignore
+    services.AddGiraffe() |> ignore
+    services.AddSingleton<CompositionRoot.CompositionRoot>
+        (fun container ->
+            let logger = container.GetRequiredService<ILogger<IStartup>>() // TODO: fix later
+            compose config logger) |> ignore
+
+let configureAppConfiguration  (context: WebHostBuilderContext) (config: IConfigurationBuilder) =  
+    config
+        .AddJsonFile("appsettings.json", false, true)
+        .AddJsonFile(sprintf "appsettings.%s.json" context.HostingEnvironment.EnvironmentName ,true)
+        .AddEnvironmentVariables() |> ignore
 
 type Startup() =
-    member __.ConfigureServices (services : IServiceCollection) = 
-        services.AddCors()    |> ignore
-        services.AddGiraffe() |> ignore
-        services.AddSingleton<CompositionRoot.CompositionRoot>(compose ()) |> ignore
+    member __.ConfigureServices (services : IServiceCollection) = configureServices services
         
     member __.Configure (app : IApplicationBuilder) (env : IHostEnvironment) (loggerFactory : ILoggerFactory) =
         configureApp app
-
+        
 [<EntryPoint>]
 let main _ =
     Host.CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
             fun webHostBuilder ->
                 webHostBuilder
+                    .ConfigureAppConfiguration(configureAppConfiguration)
                     .UseStartup<Startup>()
                     |> ignore)
         .Build()

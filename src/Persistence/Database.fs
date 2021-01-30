@@ -1,11 +1,8 @@
 module Persistence.Database
 open Core.Domain.Types
-open Core.Handlers.CommandHandlers
-open Core.Handlers.QueryHandlers
 
 open System
 open System.Data
-open Core.QueryModels
 open FsToolkit.ErrorHandling
 
 open Dapper.FSharp
@@ -69,10 +66,10 @@ module Conversions =
     
     let toDbListing (listing: BookListing): Tables.Listings =
       {
-         id = listing.ListingId |> ListingId.value
+         id = listing.Id |> ListingId.value
          user_id = listing.OwnerId |> UserId.value
-         author = listing.Author |> Author.value
-         title = listing.Title |> Title.value
+         author = listing.Author
+         title = listing.Title
          status = toDbListingStatus listing.Status
          published_date = DateTime.UtcNow // TODO: pass in somehow
       }
@@ -83,16 +80,20 @@ module Conversions =
         name = user.Name
       }
     
-    let toUserReadModel (dbUser: Tables.Users): CommandPersistenceOperations.UserReadModel =
+    let toUserReadModel (dbUser: Tables.Users): User =
       {
-        Id = UserId.create dbUser.id
+        UserId = UserId.create dbUser.id
         Name = dbUser.name
+        Email = ""
+        UserSettings = {
+          IsSubscribedToUserListingActivity = true
+        }
       }
     
 module CommandPersistenceImpl =
-  open CommandPersistenceOperations
-
-  let createUser (dbConnection: IDbConnection): CreateUser =
+  open Services.Persistence
+  
+  let createUser (dbConnection: IDbConnection): Commands.CreateUser =
     fun user ->
       insert<Tables.Users> {
         table Tables.Users.tableName
@@ -101,7 +102,7 @@ module CommandPersistenceImpl =
       |> dbConnection.InsertAsync
       |> Task.map (fun _ -> Ok ()) // TODO: proper error handling
 
-  let createListing (dbConnection: IDbConnection): CreateListing =
+  let createListing (dbConnection: IDbConnection): Commands.CreateListing =
     fun model ->
       insert<Tables.Listings> {
         table Tables.Listings.tableName
@@ -110,7 +111,7 @@ module CommandPersistenceImpl =
       |> dbConnection.InsertAsync
       |> Task.map (fun _ -> Ok ()) // TODO: proper error handling
   
-  let getUserById (dbConnection: IDbConnection): GetUserById =
+  let getUserById (dbConnection: IDbConnection): Common.GetUserById =
     fun userId ->
         select {
             table Tables.Users.tableName
@@ -120,8 +121,9 @@ module CommandPersistenceImpl =
         |> Task.map (Seq.head >> Conversions.toUserReadModel >> Ok) // TODO: handle missing user
         
 module QueryPersistenceImpl =
-  open QueryPersistenceOperations
-  
+  open Services.QueryHandlers
+  open Services.QueryModels
+    
   let private toUserBookListingDto (listing: Tables.Listings): UserBookListingDto = {
     ListingId = listing.id
     Author = listing.author
@@ -133,9 +135,11 @@ module QueryPersistenceImpl =
       {
         Id = dbUser.id
         Name = dbUser.name
+        Email = "" // TODO: add to db
+        IsSubscribedToUserListingActivity = true 
       }
   
-  let getListingsByUserId (dbConnection: IDbConnection): GetListingsByOwnerId =
+  let getListingsByUserId (dbConnection: IDbConnection): QueryPersistenceOperations.GetListingsByOwnerId =
     fun userId ->
       select {
           table Tables.Listings.tableName

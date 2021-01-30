@@ -1,11 +1,10 @@
-module Core.QueryModels
+module Services.QueryModels
 
 open System
 open System.Threading.Tasks
 
 type QueryError =
    | InternalError   
-
 type QueryResult<'a> = Task<Result<'a, QueryError>>
 
 type BorrowerDto = {
@@ -37,6 +36,8 @@ type UserBookListingDto = {
 type UserDto = {
     Id: Guid
     Name: string
+    Email: string
+    IsSubscribedToUserListingActivity: bool
 }
 
 type UserActivityListingStatus =

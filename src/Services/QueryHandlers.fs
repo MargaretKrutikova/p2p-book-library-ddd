@@ -1,19 +1,17 @@
-module Core.Handlers.QueryHandlers
+module Services.QueryHandlers
 
 open System
-open System.Threading.Tasks
-open Core.QueryModels
+open Services.QueryModels
 open FsToolkit.ErrorHandling.Operator.TaskResult
 open FsToolkit.ErrorHandling
 
 open Core.Domain.Types
 
 module QueryPersistenceOperations =
-    type DbResult<'a> = Task<Result<'a, QueryError>>
-    type GetAllPublishedListings = unit -> DbResult<BookListingDto list>
-    type GetListingsByOwnerId = UserId -> DbResult<UserBookListingDto seq>
-    type GetUserByName = string -> DbResult<UserDto option>
-    type GetListingById = ListingId -> DbResult<BookListingDto option>
+    type GetAllPublishedListings = unit -> QueryResult<BookListingDto list>
+    type GetListingsByOwnerId = UserId -> QueryResult<UserBookListingDto seq>
+    type GetUserByName = string -> QueryResult<UserDto option>
+    type GetListingById = ListingId -> QueryResult<BookListingDto option>
 
 type QueryPersistenceOperations =
     { GetAllPublishedListings: QueryPersistenceOperations.GetAllPublishedListings
