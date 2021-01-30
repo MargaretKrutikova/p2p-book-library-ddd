@@ -1,7 +1,6 @@
 module Services.QueryHandlers
 
 open System
-open Services.Persistence
 open Services.QueryModels
 open FsToolkit.ErrorHandling.Operator.TaskResult
 open FsToolkit.ErrorHandling
@@ -25,7 +24,7 @@ let getAllPublishedBookListings (getListings: QueryPersistenceOperations.GetAllP
                                 : GetAllPublishedBookListings =
     fun () ->
         getListings ()
-        |> TaskResult.mapError (fun _ -> DbReadError.InternalError)
+        |> TaskResult.mapError (fun _ -> InternalError)
 
 type GetUserBookListings = UserId -> QueryResult<UserBookListingDto list>
 let getUserBookListings (getListingsByUserId: QueryPersistenceOperations.GetListingsByOwnerId): GetUserBookListings =

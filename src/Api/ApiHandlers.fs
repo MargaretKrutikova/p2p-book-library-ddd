@@ -10,6 +10,7 @@ open System
 open FsToolkit.ErrorHandling
 open FsToolkit.ErrorHandling.Operator.TaskResult
 open Services.QueryHandlers
+open Services.QueryModels
 
 module ModelConversions =
     let toPublishedListingsOutputModel listings: PublishedListingsOutputModel = { Listings = listings }
@@ -45,10 +46,9 @@ module CommandArgsConversions =
         
         toChangeListingStatusArgs' inputModel.ListingId inputModel.UserId command
         
-let private fromQueryError (queryError: Services.Persistence.DbReadError): ApiError =
+let private fromQueryError (queryError: QueryError): ApiError =
     match queryError with
-    | Services.Persistence.InternalError -> ApiError.InternalError
-    | Services.Persistence.MissingRecord -> ApiError.InternalError
+    | QueryError.InternalError -> ApiError.InternalError
 
 let private fromAppError (appError: AppError): ApiError =
     match appError with
