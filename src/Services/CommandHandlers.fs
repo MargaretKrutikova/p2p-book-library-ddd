@@ -10,24 +10,32 @@ open Core.Domain.Types
 
 open FsToolkit.ErrorHandling.TaskResultCE
 open FsToolkit.ErrorHandling
+open Services.Persistence
 
 type CommandResult = Task<Result<EventEnvelope list, AppError>>
 type CommandHandler = Command -> CommandResult
 
 type CommandHandlerDependencies =
-    { GetUserById: Persistence.Common.GetUserById
-      GetListingById: Persistence.Common.GetListingById
-      CreateListing: Persistence.Commands.CreateListing
-      CreateUser: Persistence.Commands.CreateUser
-      UpdateListingStatus: Persistence.Commands.UpdateListingStatus }
-
-let private checkUserExists (getUserById: Persistence.Common.GetUserById) userId: Task<Result<unit, AppError>> =
-    getUserById userId
-    |> TaskResult.mapError (function | Persistence.DbReadError.MissingRecord -> AppError.Validation UserNotFound)
-    |> TaskResult.ignore
+    { GetUserById: Common.GetUserById
+      GetListingById: Common.GetListingById
+      CreateListing: Commands.CreateListing
+      CreateUser: Commands.CreateUser
+      UpdateListingStatus: Commands.UpdateListingStatus }
 
 let private mapFromDbListingError =
-    function | Persistence.DbReadError.MissingRecord -> AppError.Validation ListingNotFound
+    function
+    | DbReadError.MissingRecord -> AppError.Validation ListingNotFound
+    | DbReadError.InternalError -> AppError.ServiceError
+
+let private mapFromDbUserError =
+    function
+    | DbReadError.MissingRecord -> AppError.Validation UserNotFound
+    | DbReadError.InternalError -> AppError.ServiceError
+
+let private checkUserExists (getUserById: Common.GetUserById) userId: Task<Result<unit, AppError>> =
+    getUserById userId
+    |> TaskResult.mapError mapFromDbUserError
+    |> TaskResult.ignore
 
 let publishBookListing (operations: CommandHandlerDependencies) (args: PublishBookListingArgs): CommandResult = 
     taskResult {
@@ -40,7 +48,7 @@ let publishBookListing (operations: CommandHandlerDependencies) (args: PublishBo
         return { Timestamp = DateTime.UtcNow; Event = event } |> List.singleton
     }
 
-type RegisterUser = Persistence.Commands.CreateUser -> RegisterUserArgs -> CommandResult    
+type RegisterUser = Commands.CreateUser -> RegisterUserArgs -> CommandResult    
 let registerUser: RegisterUser =
   fun createUser args ->
      taskResult {

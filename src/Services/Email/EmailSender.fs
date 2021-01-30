@@ -42,4 +42,3 @@ let handleEmailSenderMessage (sendEmail: SendEmail) (message: EmailSenderMessage
        }
        sendEmail data |> Async.StartAsTask |> ignore
     | _ -> ()
-
